@@ -16,19 +16,19 @@ Examples:
 
 
 * <i>To send a program to current position (edit buffer):</i>
-<code> dialog MyPatch.prlgprog </code>
+<code> dialogue MyPatch.prlgprog </code>
 
 * <i>To receive the current program (edit buffer):</i>
-<code> dialog -W NewPatch.prlgprog </code>
+<code> dialogue -W NewPatch.prlgprog </code>
 
 * <i>To send and save a program to position 100:</i>
-<code> dialog -p 100 MyPatch.prlgprog </code>
+<code> dialogue -p 100 MyPatch.prlgprog </code>
 
 * <i>To receive program from position 100:</i>
-<code> dialog -p 100 -W NewPatch.prlgprog </code>
+<code> dialogue -p 100 -W NewPatch.prlgprog </code>
 
 * <i>List MIDI ports:</i>
-<code> dialog -l </code>
+<code> dialogue -l </code>
 
 If using direct USB-connection to device, MIDI in/out is automatically detected. Otherwise you can explicitly set them. Use <code>-l</code> option to list all available ports. Use <code>-id \<midi channel\></code> to match the device MIDI channel (default is 1).
 
