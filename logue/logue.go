@@ -1,6 +1,6 @@
 //
 // Dialogue is a tool for Korg Logue series of synths
-// Copyright (C) 2021 Juha Forsten
+// Copyright (C) 2021 Juha Forstén
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	sysexMessageType "logue/logue/sysex/messagetype"
 )
 
 // Logue is generic interface for communicating Korg's logue series
@@ -53,6 +54,10 @@ type DeviceSpecificInfo struct {
 var logue Logue
 
 func Open() error {
+const CurrentProgramDataDumpRequest byte = 123
+	r := sysexMessageType.CurrentProgramDataDumpRequest
+	fmt.Println(r)
+
 	return initializeMidi()
 }
 

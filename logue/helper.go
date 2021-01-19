@@ -1,6 +1,6 @@
 //
 // Dialogue is a tool for Korg Logue series of synths
-// Copyright (C) 2021 Juha Forsten
+// Copyright (C) 2021 Juha Forstén
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -117,7 +117,7 @@ func createZipFile(outname string, fileList map[string][]byte) error {
 	buf := new(bytes.Buffer)
 
 	zipWriter := zip.NewWriter(buf)
-	
+
 	for name, content := range fileList {
 		zipFile, err := zipWriter.Create(name)
 		if err != nil {

@@ -1,6 +1,6 @@
 //
 // Dialogue is a tool for Korg Logue series of synths
-// Copyright (C) 2021 Juha Forsten
+// Copyright (C) 2021 Juha Forstén
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -23,8 +23,6 @@
 
 package main
 
-import "C"
-
 import (
 	"flag"
 	"fmt"
@@ -32,24 +30,17 @@ import (
 	"os"
 )
 
-var deviceID int
-var filename string
-var enablePortListing bool
-var explicitMidiInIdx int
-var explicitMidiOutIdx int
-var patchNumber int
-var receiveMode bool
-
 func main() {
-	
-	// Get cmd line options
-	flag.IntVar(&deviceID, "id", 1, "Midi channel of the device (DeviceID).")
-	flag.IntVar(&explicitMidiInIdx, "in", -1, "Set Midi input (index) explicitely. -1 = Auto detect.")
-	flag.IntVar(&explicitMidiOutIdx, "out", -1, "Set Midi output (index) explicitely. -1 = Auto detect.")
-	flag.BoolVar(&enablePortListing, "l", false, "Show available MIDI ports.")
-	flag.IntVar(&patchNumber, "p", -1, "Program number. -1 = Edit buffer.")
-	flag.BoolVar(&receiveMode, "R", false, "READ patch from device and save to file.")
-	
+
+	// Cmd line options
+	var (
+		deviceID           = flag.Int("id", 1, "Midi channel of the device (DeviceID).")
+		explicitMidiInIdx  = flag.Int("in", -1, "Set Midi input (index) explicitely. -1 = Auto detect.")
+		explicitMidiOutIdx = flag.Int("out", -1, "Set Midi output (index) explicitely. -1 = Auto detect.")
+		enablePortListing  = flag.Bool("l", false, "Show available MIDI ports.")
+		patchNumber        = flag.Int("p", -1, "Program number. -1 = Edit buffer.")
+		receiveMode        = flag.Bool("R", false, "READ patch from device and save to file.")
+	)
 	flag.Parse()
 
 	if len(flag.Args()) > 1 {
@@ -57,23 +48,33 @@ func main() {
 		os.Exit(-1)
 	}
 
-	filename = flag.Arg(0)
+	filename := flag.Arg(0)
 
 	err := logue.Open()
 	checkError(err)
 
 	defer logue.Close()
 
-	if enablePortListing { logue.ListMidiPorts() }
+	if *enablePortListing {
+		logue.ListMidiPorts()
+	}
 
-	logue.SetDevice(logue.Prologue{DeviceID: byte(deviceID)})
+	logue.SetDevice(logue.Prologue{DeviceID: byte(*deviceID)})
 
 	var in, out int
 
 	inFound, outFound := logue.FindMidiIO()
 
-	if explicitMidiInIdx >= 0 { in = explicitMidiInIdx} else { in = inFound }
-	if explicitMidiOutIdx >= 0 { out = explicitMidiOutIdx} else { out = outFound }
+	if *explicitMidiInIdx >= 0 {
+		in = *explicitMidiInIdx
+	} else {
+		in = inFound
+	}
+	if *explicitMidiOutIdx >= 0 {
+		out = *explicitMidiOutIdx
+	} else {
+		out = outFound
+	}
 
 	if in < 0 || out < 0 {
 		logue.ListMidiPorts()
@@ -82,33 +83,33 @@ func main() {
 	}
 
 	//fmt.Printf("Using MIDI (in:%d / out:%d) - channel <%d>\n", in, out, deviceID)
-	
-	err = logue.SetMidi(in,out)
+
+	err = logue.SetMidi(in, out)
 	checkError(err)
 
 	// Exit if no files to process...
-	if filename == "" { 
-		// Select program if opted even no files to process 
-		if patchNumber > 0 { 
-			fmt.Printf("Selecting program <%d>\n", patchNumber)
-			logue.SelectProgram(patchNumber)
+	if filename == "" {
+		// Select program if opted even no files to process
+		if *patchNumber > 0 {
+			fmt.Printf("Selecting program <%d>\n", *patchNumber)
+			logue.SelectProgram(*patchNumber)
 		}
-		os.Exit(0) 
+		os.Exit(0)
 	}
 
 	// Use patch number only if in valid range (1-500). Defaults to edit buffer...
 
-	if receiveMode {
-		err = <- logue.SaveProgramData(patchNumber, filename)
+	if *receiveMode {
+		err = <-logue.SaveProgramData(*patchNumber, filename)
 		checkError(err)
 		if err == nil {
-			fmt.Printf("\nProgram file '%s' saved to file!\n", filename) 
-		}		
+			fmt.Printf("\nProgram file '%s' saved to file!\n", filename)
+		}
 	} else {
-		err = <- logue.LoadProgramFile(patchNumber, filename)
+		err = <-logue.LoadProgramFile(*patchNumber, filename)
 		checkError(err)
 		if err == nil {
-			fmt.Printf("\nProgram file '%s' sent to device!\n", filename) 
+			fmt.Printf("\nProgram file '%s' sent to device!\n", filename)
 		}
 	}
 }

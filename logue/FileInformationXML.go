@@ -1,6 +1,6 @@
 //
 // Dialogue is a tool for Korg Logue series of synths
-// Copyright (C) 2021 Juha Forsten
+// Copyright (C) 2021 Juha Forstén
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -43,13 +43,13 @@ type Korg struct {
 
 func createFileInformationXML(product string) string {
 	korg := &Korg{
-		Product:  product,
+		Product: product,
 		Contents: Contents{
-			NumLivesetData: 0, 
-			NumProgramData: 1, 
-			NumPresetInformation: 0, 
-			NumTuneScaleData: 0, 
-			NumTuneOctData: 0, 
+			NumLivesetData:       0,
+			NumProgramData:       1,
+			NumPresetInformation: 0,
+			NumTuneScaleData:     0,
+			NumTuneOctData:       0,
 			ProgramData: ProgramData{
 				Information: "Prog_000.prog_info", ProgramBinary: "Prog_000.prog_bin",
 			},

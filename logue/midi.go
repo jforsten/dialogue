@@ -1,6 +1,6 @@
 //
 // Dialogue is a tool for Korg Logue series of synths
-// Copyright (C) 2021 Juha Forsten
+// Copyright (C) 2021 Juha Forstén
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 package logue
 
 import (
-//	"encoding/hex"
+	//	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -29,29 +29,29 @@ import (
 	driver "gitlab.com/gomidi/rtmididrv"
 )
 
-type MidiPort struct {
-	drv *(driver.Driver)
-	wr *(writer.Writer)
-	ins []midi.In
+type midiConnection struct {
+	drv  *(driver.Driver)
+	wr   *(writer.Writer)
+	ins  []midi.In
 	outs []midi.Out
-	in midi.In
-	out midi.Out
-	ch chan []byte
+	in   midi.In
+	out  midi.Out
+	ch   chan []byte
 }
 
-var midiPort MidiPort
+var midiConn midiConnection
 
 func initializeMidi() error {
 	var err error
-	midiPort.drv, err = driver.New()
+	midiConn.drv, err = driver.New()
 
-	midiPort.ins, err = midiPort.drv.Ins()
+	midiConn.ins, err = midiConn.drv.Ins()
 	checkError(err)
 
-	midiPort.outs, err = midiPort.drv.Outs()
+	midiConn.outs, err = midiConn.drv.Outs()
 	checkError(err)
 
-	midiPort.ch = make(chan []byte)
+	midiConn.ch = make(chan []byte)
 
 	return err
 }
@@ -60,50 +60,50 @@ func getMidiPortNames() ([]string, []string) {
 	var ins = []string{}
 	var outs = []string{}
 
-	for _, p := range midiPort.ins {
+	for _, p := range midiConn.ins {
 		ins = append(ins, p.String())
 	}
-	for _, p := range midiPort.outs {
+	for _, p := range midiConn.outs {
 		outs = append(outs, p.String())
 	}
 	return ins, outs
 }
 
 func closeMidi() {
-	if midiPort.in != nil {
-		midiPort.in.Close()
+	if midiConn.in != nil {
+		midiConn.in.Close()
 	}
-	if midiPort.out != nil {
-		midiPort.out.Close()
+	if midiConn.out != nil {
+		midiConn.out.Close()
 	}
-	if midiPort.drv != nil {
-		midiPort.drv.Close()
+	if midiConn.drv != nil {
+		midiConn.drv.Close()
 	}
 }
 
 func setMidi(inIdx int, outIdx int) error {
 
-	if inIdx<0 || inIdx>len(midiPort.ins)-1 {
+	if inIdx < 0 || inIdx > len(midiConn.ins)-1 {
 		return fmt.Errorf("In port is out of range!")
 	}
 
-	if outIdx<0 || outIdx> len(midiPort.outs)-1 {
+	if outIdx < 0 || outIdx > len(midiConn.outs)-1 {
 		return fmt.Errorf("Out port is out of range!")
 	}
 
-	midiPort.in, midiPort.out = midiPort.ins[inIdx], midiPort.outs[outIdx]
+	midiConn.in, midiConn.out = midiConn.ins[inIdx], midiConn.outs[outIdx]
 
-	checkError(midiPort.in.Open())
-	checkError(midiPort.out.Open())
-	
-	midiPort.wr = writer.New(midiPort.out)
-	
+	checkError(midiConn.in.Open())
+	checkError(midiConn.out.Open())
+
+	midiConn.wr = writer.New(midiConn.out)
+
 	rd := reader.New(
 		reader.NoLogger(),
 		reader.IgnoreMIDIClock(),
 		reader.SysEx(func(pos *reader.Position, data []byte) {
 			//fmt.Printf("%s", hex.Dump(sysex.SysEx(data).Raw()))
-			midiPort.ch<-sysex.SysEx(data).Raw()
+			midiConn.ch <- sysex.SysEx(data).Raw()
 		}),
 		// write every message to the out port
 		//reader.Each(func(pos *reader.Position, msg midi.Message) {
@@ -111,52 +111,51 @@ func setMidi(inIdx int, outIdx int) error {
 		//}),
 	)
 
-
 	// listen for MIDI
-	err := rd.ListenTo(midiPort.in)
+	err := rd.ListenTo(midiConn.in)
 	checkError(err)
 
 	return err
 }
 
-func sendSysexAsync(sysexData []byte) <- chan []byte {
+func sendSysexAsync(sysexData []byte) <-chan []byte {
 	replyChan := make(chan []byte, 1)
-	if midiPort.wr != nil {
-		err := writer.SysEx(midiPort.wr, sysexData)
+	if midiConn.wr != nil {
+		err := writer.SysEx(midiConn.wr, sysexData)
 		checkError(err)
 	} else {
 		fmt.Printf("Out port is not writeable!")
 		replyChan <- nil
 		return replyChan
 	}
-	
+
 	select {
-    case reply := <-midiPort.ch:
+	case reply := <-midiConn.ch:
 		replyChan <- reply
 		return replyChan
-    case <-time.After(2 * time.Second):
+	case <-time.After(2 * time.Second):
 		fmt.Printf("ERROR: Timeout!")
 		replyChan <- nil
 		return replyChan
-    }	
+	}
 }
 
 func sendControlChange(channel byte, controller byte, value byte) error {
-	midiPort.wr.SetChannel(channel)
-	return writer.ControlChange(midiPort.wr, controller, value)
+	midiConn.wr.SetChannel(channel)
+	return writer.ControlChange(midiConn.wr, controller, value)
 }
 
 func sendProgramChange(channel byte, program byte) error {
-	midiPort.wr.SetChannel(channel)
-	return writer.ProgramChange(midiPort.wr, program)
+	midiConn.wr.SetChannel(channel)
+	return writer.ProgramChange(midiConn.wr, program)
 }
 
 func sendNoteOn(channel byte, key byte, volume byte) error {
-	midiPort.wr.SetChannel(channel)
-	return writer.NoteOn(midiPort.wr, key, volume)
+	midiConn.wr.SetChannel(channel)
+	return writer.NoteOn(midiConn.wr, key, volume)
 }
 
 func sendNoteOff(channel byte, key byte) error {
-	midiPort.wr.SetChannel(channel)
-	return writer.NoteOff(midiPort.wr, key)
+	midiConn.wr.SetChannel(channel)
+	return writer.NoteOff(midiConn.wr, key)
 }
