@@ -19,6 +19,7 @@ package logue
 
 import (
 	"encoding/xml"
+	"fmt"
 )
 
 type ProgramData struct {
@@ -59,4 +60,15 @@ func createFileInformationXML(product string) string {
 	out, _ := xml.MarshalIndent(korg, " ", "  ")
 	xmlStr := xml.Header + string(out)
 	return xmlStr
+}
+
+// Program information XML ("Prog_NNN.prog_info") inside *.XXXprog package
+func createProgramInfoXML(device string, programmer string, comment string) string {
+	var outXML string
+	outXML =  xml.Header + 
+			  fmt.Sprintf("<%s_ProgramInformation>\n", device) +
+			  fmt.Sprintf("  <Programmer>%s</Programmer>\n", programmer) +
+			  fmt.Sprintf("  <Comment>%s</Comment>\n", comment) +
+			  fmt.Sprintf("</%s_ProgramInformation>\n", device)
+	return outXML
 }

@@ -1,3 +1,20 @@
+//
+// Dialogue is a tool for Korg Logue series of synths
+// Copyright (C) 2021 Juha Forstén
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
+
 package messagetype
 
 // Request / Dump types
@@ -20,8 +37,8 @@ const CurrentProgramDataDump byte = 0x40
 // LivesetDataDump - liveset dump
 const LivesetDataDump byte = 0x46
 
-// LivesetDataDump1Prog - liveset dump
-const LivesetDataDump1Prog byte = 0x4C
+// ProgramDataDump - program dump
+const ProgramDataDump byte = 0x4C
 
 // GlobalDataDump - global data dump
 const GlobalDataDump byte = 0x51

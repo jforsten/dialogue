@@ -21,43 +21,38 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	sysex "logue/logue/sysex"
 	sysexMessageType "logue/logue/sysex/messagetype"
 )
 
 // Logue is generic interface for communicating Korg's logue series
 type Logue interface {
-	getCurrentProgramSysexMessage() []byte
-	setCurrentProgramSysexMessage(data []byte) []byte
-
-	getProgramSysexMessage(number int) []byte
-	setProgramSysexMessage(number int, data []byte) []byte
-
 	getDeviceSpecificInfo() DeviceSpecificInfo
+}
 
-	createProgramInfoXML(programmer string, comment string) string
-
-	extractBinaryDataFromDump(sysexMessage []byte) []byte
+type ProgramRange struct {
+	min int
+	max int
 }
 
 type DeviceSpecificInfo struct {
-	deviceID             	 byte
-    deviceName               string
-	programFileExtension	 string
+	deviceID                 byte // Global MIDI channel (1-16)
+	familyID                 byte
+	deviceName               string
+	programInfoName          string
+	programFileExtension     string
 	programDataFileExtension string
-	programFilesize      	 int
-	
-	midiNamePrefix           string
-	
-	programRange             [2]int
+	programFilesize          int
+
+	midiNamePrefix string
+
+	programRange ProgramRange
 }
 
 var logue Logue
 
 func Open() error {
-const CurrentProgramDataDumpRequest byte = 123
-	r := sysexMessageType.CurrentProgramDataDumpRequest
-	fmt.Println(r)
-
 	return initializeMidi()
 }
 
@@ -103,7 +98,7 @@ func SetMidi(inIdx int, outIdx int) error {
 
 // Prologue way of selecting program..
 func SelectProgram(number int) error {
-	if number < logue.getDeviceSpecificInfo().programRange[0] || number > logue.getDeviceSpecificInfo().programRange[1] {
+	if number < logue.getDeviceSpecificInfo().programRange.min || number > logue.getDeviceSpecificInfo().programRange.max {
 		return fmt.Errorf("ERROR: Program number out of range!")
 	}
 	number--
@@ -111,68 +106,91 @@ func SelectProgram(number int) error {
 	bankLsb := byte(number / 100)
 	num := byte(number % 100)
 
-	sendNoteOn(logue.getDeviceSpecificInfo().deviceID - 1, 1, 1)
+	sendNoteOn(logue.getDeviceSpecificInfo().deviceID-1, 1, 1)
 	//time.Sleep(2 * time.Millisecond)
-	sendNoteOff(logue.getDeviceSpecificInfo().deviceID - 1, 1)	
-	sendControlChange(logue.getDeviceSpecificInfo().deviceID - 1, 0x78, 0)
+	sendNoteOff(logue.getDeviceSpecificInfo().deviceID-1, 1)
+	sendControlChange(logue.getDeviceSpecificInfo().deviceID-1, 0x78, 0)
 	time.Sleep(1 * time.Millisecond)
 
-	sendControlChange(logue.getDeviceSpecificInfo().deviceID - 1, 0x00, bankMsb)
-	sendControlChange(logue.getDeviceSpecificInfo().deviceID - 1, 0x20, bankLsb)
+	sendControlChange(logue.getDeviceSpecificInfo().deviceID-1, 0x00, bankMsb)
+	sendControlChange(logue.getDeviceSpecificInfo().deviceID-1, 0x20, bankLsb)
 	sendProgramChange(logue.getDeviceSpecificInfo().deviceID-1, num)
 	time.Sleep(1 * time.Millisecond)
 	return nil
 }
 
+func createSysex(messageType byte, header []byte, data []byte) []byte {
+	var buf []byte
+	buf = append(header, convertBinaryDataToSysexData(data)...)
+	return sysex.Request(
+		logue.getDeviceSpecificInfo().familyID,
+		logue.getDeviceSpecificInfo().deviceID,
+		messageType,
+		buf,
+	)
+}
+
 func LoadProgramFile(programNumber int, filename string) <-chan error {
 	var err error
 	var sysexMessage []byte
-	
+
 	data := getDataFromZipFile(logue.getDeviceSpecificInfo(), filename)
-	if programNumber < logue.getDeviceSpecificInfo().programRange[0] || programNumber > logue.getDeviceSpecificInfo().programRange[1] {
-		sysexMessage = logue.setCurrentProgramSysexMessage(data)
+	if programNumber < logue.getDeviceSpecificInfo().programRange.min || programNumber > logue.getDeviceSpecificInfo().programRange.max {
+		sysexMessage = createSysex(sysexMessageType.CurrentProgramDataDump, nil, data)
 	} else {
-		sysexMessage = logue.setProgramSysexMessage(programNumber, data)
-	}	
+		sysexMessage = createSysex(sysexMessageType.ProgramDataDump, sysex.ProgramNumber(programNumber), data)
+	}
 
 	replyChan := sendSysexAsync(sysexMessage)
-	reply := <- replyChan
+	reply := <-replyChan
 
-	if reply == nil { err = fmt.Errorf("ERROR: Communication not working!") }
-	
-	errChan := make(chan error,1)
+	if reply == nil {
+		err = fmt.Errorf("ERROR: Communication not working!")
+	}
+
+	errChan := make(chan error, 1)
 	errChan <- err
-	
+
 	return errChan
 }
 
 func SaveProgramData(programNumber int, filename string) <-chan error {
 	var err error
-	errChan := make(chan error,1)
+	errChan := make(chan error, 1)
 	var sysexMessage []byte
 
-	if programNumber < logue.getDeviceSpecificInfo().programRange[0] || programNumber > logue.getDeviceSpecificInfo().programRange[1] {
-		sysexMessage = logue.getCurrentProgramSysexMessage()
+	if programNumber < logue.getDeviceSpecificInfo().programRange.min || programNumber > logue.getDeviceSpecificInfo().programRange.max {
+		sysexMessage = createSysex(
+			sysexMessageType.CurrentProgramDataDumpRequest,
+			nil,
+			nil,
+		)
 	} else {
-		sysexMessage = logue.getProgramSysexMessage(programNumber)
-	}	
-	
+		sysexMessage = createSysex(
+			sysexMessageType.CurrentProgramDataDumpRequest,
+			sysex.ProgramNumber(programNumber),
+			nil,
+		)
+
+	}
+
 	replyChan := sendSysexAsync(sysexMessage)
-	reply := <- replyChan
-	
-	if reply == nil { 
+	reply := <-replyChan
+
+	if reply == nil {
 		err = fmt.Errorf("ERROR: Communication not working!")
-		errChan <- err 
+		errChan <- err
 		return errChan
-	} 
+	}
 
-	binData := logue.extractBinaryDataFromDump(reply)
+	_, _, responseData := sysex.Response(reply)
+	binData := convertSysexDataToBinaryData(responseData)
 
-	if binData == nil { 
+	if binData == nil {
 		err = fmt.Errorf("ERROR: Received wrong data!")
-		errChan <- err 
+		errChan <- err
 		return errChan
-	} 
+	}
 
 	err = saveProgramDataToFile(binData, filename)
 
@@ -188,12 +206,12 @@ func saveProgramDataToFile(data []byte, filename string) error {
 	deviceName := logue.getDeviceSpecificInfo().deviceName
 	fileInfoXML := createFileInformationXML(deviceName)
 
-	programInfoXML := logue.createProgramInfoXML("", "")
+	programInfoXML := createProgramInfoXML(logue.getDeviceSpecificInfo().programInfoName, "", "")
 
-	files := map[string][]byte {
-		"FileInformation.xml":[]byte(fileInfoXML),
-		"Prog_000.prog_info":[]byte(programInfoXML),
-		"Prog_000.prog_bin":data, 
+	files := map[string][]byte{
+		"FileInformation.xml": []byte(fileInfoXML),
+		"Prog_000.prog_info":  []byte(programInfoXML),
+		"Prog_000.prog_bin":   data,
 	}
 
 	err := createZipFile(filename, files)
