@@ -18,7 +18,9 @@
 package logue
 
 import (
+	"encoding/hex"
 	"fmt"
+	"hash/crc32"
 	"strings"
 	"time"
 
@@ -36,6 +38,16 @@ type ProgramRange struct {
 	max int
 }
 
+func (p ProgramRange) has(programNumber int) bool {
+	return programNumber >= logue.getDeviceSpecificInfo().programRange.min && programNumber <= logue.getDeviceSpecificInfo().programRange.max
+}
+
+// Relation between sent sysex type and expected return type and data
+type SysexMessageMap struct {
+	responseType           byte
+	responseDataHeaderSize int
+}
+
 type DeviceSpecificInfo struct {
 	deviceID                 byte // Global MIDI channel (1-16)
 	familyID                 byte
@@ -44,10 +56,9 @@ type DeviceSpecificInfo struct {
 	programFileExtension     string
 	programDataFileExtension string
 	programFilesize          int
-
-	midiNamePrefix string
-
-	programRange ProgramRange
+	midiNamePrefix           string
+	programRange             ProgramRange
+	sysexMap                 map[byte]SysexMessageMap
 }
 
 var logue Logue
@@ -130,71 +141,208 @@ func createSysex(messageType byte, header []byte, data []byte) []byte {
 	)
 }
 
-func LoadProgramFile(programNumber int, filename string) <-chan error {
+type response struct {
+	err  error
+	data []byte
+}
+
+const (
+	// as defined in https://github.com/01org/isa-l/blob/master/crc/crc_base.c#L145
+	// which is different from what golang considers the IEEE_standard:
+	// https://godoc.org/hash/crc32#pkg-constants
+	polynomial_ieee uint32 = 0x04C11DB7
+)
+
+// based on isal's crc32 algo found at:
+// https://github.com/01org/isa-l/blob/master/crc/crc_base.c#L138-L155
+func crc32_ieee_base(seed uint32, data []byte) (crc uint32) {
+	rem := uint64(^seed)
+
+	var i, j int
+
+	const (
+		// defined in
+		// https://github.com/01org/isa-l/blob/master/crc/crc_base.c#L33
+		MAX_ITER = 8
+	)
+
+	for i = 0; i < len(data); i++ {
+		rem = rem ^ (uint64(data[i]) << 24)
+		for j = 0; j < MAX_ITER; j++ {
+			rem = rem << 1
+			if (rem & 0x100000000) != 0 {
+				rem ^= uint64(polynomial_ieee)
+			}
+		}
+	}
+
+	crc = uint32(^rem)
+	return
+}
+
+func getData(requestType byte, requestDataHeader []byte, requestData []byte) <-chan response {
+
+	var binData []byte
 	var err error
+	ch := make(chan response, 1)
 	var sysexMessage []byte
 
-	data := getDataFromZipFile(logue.getDeviceSpecificInfo(), filename)
-	if programNumber < logue.getDeviceSpecificInfo().programRange.min || programNumber > logue.getDeviceSpecificInfo().programRange.max {
-		sysexMessage = createSysex(sysexMessageType.CurrentProgramDataDump, nil, data)
-	} else {
-		sysexMessage = createSysex(sysexMessageType.ProgramDataDump, sysex.ProgramNumber(programNumber), data)
-	}
+	sysexMessage = createSysex(requestType, requestDataHeader, requestData)
+
+	fmt.Printf("\nSEND:\n%s\n", hex.Dump(sysexMessage))
 
 	replyChan := sendSysexAsync(sysexMessage)
 	reply := <-replyChan
 
 	if reply == nil {
 		err = fmt.Errorf("ERROR: Communication not working!")
+		ch <- response{err, nil}
+		return ch
 	}
 
+	_, _, responseData := sysex.Response(reply)
+
+	if len(responseData) > 10 {
+
+		responseDataHeaderSize := logue.getDeviceSpecificInfo().sysexMap[requestType].responseDataHeaderSize
+		//fmt.Printf("responseData:\n%s\n", hex.Dump(responseData))
+		dataSection := responseData[responseDataHeaderSize:]
+		//fmt.Printf("dataSection:\n%s\n", hex.Dump(dataSection))
+		binData = convertSysexDataToBinaryData(dataSection)
+		d := binData[8:]
+
+		crc := crc32.ChecksumIEEE(d)
+		fmt.Printf("size:%x, crc32:\n%x\n", len(binData[8:]), crc)
+
+		dd := []byte{0x04, 0x06, 0x61, 0x04, 0x0C, 0x00, 0x00, 0x58, 0x15, 0x04, 0x00, 0x1C, 0x04,
+			0x01, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 00, 00, 00, 00, 00, 01}
+		fmt.Printf("\nT:%s\n", hex.Dump(convertSysexDataToBinaryData(dd[2:])))
+
+		//fmt.Printf("binData:\n%s\n", hex.Dump(binData))
+		//binData2 := convertSysexDataToBinaryData_(dataSection)
+		//fmt.Printf("binData2:\n%s\n", hex.Dump(binData2))
+
+		if binData == nil {
+			err = fmt.Errorf("ERROR: Received wrong data!")
+			ch <- response{err, nil}
+			return ch
+		}
+
+	}
+
+	ch <- response{err, binData}
+	return ch
+}
+
+func SetProgram(programNumber int, filename string) <-chan error {
+	var msgType byte
+	var header []byte
+
+	data := getDataFromZipFile(logue.getDeviceSpecificInfo().programFileExtension, filename)
+
+	if logue.getDeviceSpecificInfo().programRange.has(programNumber) {
+		msgType = sysexMessageType.ProgramDataDump
+		header = sysex.ProgramNumber(programNumber)
+	} else {
+		msgType = sysexMessageType.CurrentProgramDataDump
+	}
+
+	resp := <-getData(msgType, header, data)
+
 	errChan := make(chan error, 1)
-	errChan <- err
+	errChan <- resp.err
 
 	return errChan
 }
 
-func SaveProgramData(programNumber int, filename string) <-chan error {
-	var err error
-	errChan := make(chan error, 1)
-	var sysexMessage []byte
+func GetProgram(programNumber int, filename string) <-chan error {
+	var msgType byte
+	var header []byte
 
-	if programNumber < logue.getDeviceSpecificInfo().programRange.min || programNumber > logue.getDeviceSpecificInfo().programRange.max {
-		sysexMessage = createSysex(
-			sysexMessageType.CurrentProgramDataDumpRequest,
-			nil,
-			nil,
-		)
+	if logue.getDeviceSpecificInfo().programRange.has(programNumber) {
+		msgType = sysexMessageType.ProgramDataDumpRequest
+		header = sysex.ProgramNumber(programNumber)
 	} else {
-		sysexMessage = createSysex(
-			sysexMessageType.CurrentProgramDataDumpRequest,
-			sysex.ProgramNumber(programNumber),
-			nil,
-		)
-
+		msgType = sysexMessageType.CurrentProgramDataDumpRequest
 	}
 
-	replyChan := sendSysexAsync(sysexMessage)
-	reply := <-replyChan
+	resp := <-getData(msgType, header, nil)
 
-	if reply == nil {
-		err = fmt.Errorf("ERROR: Communication not working!")
+	errChan := make(chan error, 1)
+
+	//fmt.Printf("\nRECEIVED:\n%s\n", hex.Dump(resp.data))
+
+	err := saveProgramDataToFile(resp.data, filename)
+
+	if err != nil {
+		err := fmt.Errorf("ERROR: Wrong data!")
 		errChan <- err
 		return errChan
 	}
 
-	_, _, responseData := sysex.Response(reply)
-	binData := convertSysexDataToBinaryData(responseData)
+	errChan <- resp.err
+	return errChan
+}
 
-	if binData == nil {
-		err = fmt.Errorf("ERROR: Received wrong data!")
-		errChan <- err
-		return errChan
+func SetUserSlotData(moduleID byte, slotID byte) <-chan error {
+
+	errChan := make(chan error, 1)
+
+	m := getDataFromZipFile(".json", "pluck.prlgunit")
+	fmt.Printf("FILE:%s\n", string(m))
+	man := sysex.ToModuleManifest(string(m))
+	b := getDataFromZipFile(".bin", "pluck.prlgunit")
+	plat, modData := man.CreateModuleData(b)
+	fmt.Println(plat)
+	fmt.Println(hex.Dump(modData))
+
+	modData = append(modData, make([]byte,7)...)
+
+	resp := <-getData(
+		sysexMessageType.UserSlotData,
+		//sysexMessageType.UserSlotStatusRequest,
+		sysex.UserSlotHeader(moduleID, slotID),
+		modData,
+	)
+
+	errChan <- resp.err
+	return errChan
+
+}
+
+func GetUserSlotData(moduleID byte, slotID byte, filename string) <-chan error {
+
+	resp := <-getData(
+		//sysexMessageType.UserModuleInfoRequest,
+		//[]byte{0x01},
+		sysexMessageType.UserSlotDataRequest,
+		//sysexMessageType.UserSlotStatusRequest,
+		sysex.UserSlotHeader(moduleID, slotID),
+		nil,
+	)
+
+	errChan := make(chan error, 1)
+
+	if resp.data != nil {
+		fmt.Printf("\nRECEIVED:\n%s\n", hex.Dump(resp.data))
+		mod := sysex.ToModule(resp.data)
+		dat := mod.FromModule()
+		fmt.Printf("\nModule:\n%s\n", hex.Dump(dat))
+
+		fmt.Println()
+		sysex.TestJSON()
+
+		/*
+			err := saveProgramDataToFile(resp.data, filename)
+
+			if err != nil {
+				err := fmt.Errorf("ERROR: Wrong data!")
+				errChan <- err
+				return errChan
+			}
+		*/
 	}
-
-	err = saveProgramDataToFile(binData, filename)
-
-	errChan <- err
+	errChan <- resp.err
 	return errChan
 }
 

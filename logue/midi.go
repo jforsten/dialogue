@@ -18,7 +18,7 @@
 package logue
 
 import (
-	//"encoding/hex"
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -27,6 +27,7 @@ import (
 	"gitlab.com/gomidi/midi/reader"
 	"gitlab.com/gomidi/midi/writer"
 	driver "gitlab.com/gomidi/rtmididrv"
+	//driver "github.com/jforsten/rtmididrv"
 )
 
 type midiConnection struct {
@@ -102,7 +103,7 @@ func setMidi(inIdx int, outIdx int) error {
 		reader.NoLogger(),
 		reader.IgnoreMIDIClock(),
 		reader.SysEx(func(pos *reader.Position, data []byte) {
-			//fmt.Printf("%s", hex.Dump(sysex.SysEx(data).Raw()))
+			fmt.Printf("%s", hex.Dump(sysex.SysEx(data).Raw()))
 			midiConn.ch <- sysex.SysEx(data).Raw()
 		}),
 		// write every message to the out port
@@ -133,7 +134,7 @@ func sendSysexAsync(sysexData []byte) <-chan []byte {
 	case reply := <-midiConn.ch:
 		replyChan <- reply
 		return replyChan
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		fmt.Printf("ERROR: Timeout!")
 		replyChan <- nil
 		return replyChan

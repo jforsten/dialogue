@@ -39,7 +39,7 @@ func main() {
 		explicitMidiOutIdx = flag.Int("out", -1, "Set Midi output (index) explicitely. -1 = Auto detect.")
 		enablePortListing  = flag.Bool("l", false, "Show available MIDI ports.")
 		patchNumber        = flag.Int("p", -1, "Program number. -1 = Edit buffer.")
-		receiveMode        = flag.Bool("R", false, "READ patch from device and save to file.")
+		mode        	   = flag.String("m", "pw", "READ patch from device and save to file.")
 	)
 	flag.Parse()
 
@@ -98,18 +98,30 @@ func main() {
 	}
 
 	// Use patch number only if in valid range (1-500). Defaults to edit buffer...
-
-	if *receiveMode {
-		err = <-logue.SaveProgramData(*patchNumber, filename)
+	switch *mode {
+	case "pr":
+		err = <-logue.GetProgram(*patchNumber, filename)
 		checkError(err)
 		if err == nil {
 			fmt.Printf("\nProgram file '%s' saved to file!\n", filename)
 		}
-	} else {
-		err = <-logue.LoadProgramFile(*patchNumber, filename)
+	case "pw":
+		err = <-logue.SetProgram(*patchNumber, filename)
 		checkError(err)
 		if err == nil {
 			fmt.Printf("\nProgram file '%s' sent to device!\n", filename)
+		}
+	case "ur":
+		err = <-logue.GetUserSlotData(4, 11, "")
+		checkError(err)
+		if err == nil {
+			fmt.Printf("\nUser data read!\n")
+		}
+	case "uw":
+		err = <-logue.SetUserSlotData(4, 0)
+		checkError(err)
+		if err == nil {
+			fmt.Printf("\nUser data read!\n")
 		}
 	}
 }

@@ -28,8 +28,8 @@ const KorgID byte = 0x42
 
 // Request returns sysex message with proper data to be sent
 func Request(familyID byte, deviceID byte, messageType byte, data []byte) []byte {
-	// deviceID = global MIDI channel -> '1'-based to '0'-based 
-	channel := 0x30 + deviceID -1
+	// deviceID = global MIDI channel -> '1'-based to '0'-based
+	channel := 0x30 + deviceID - 1
 	message := []byte{Start, KorgID, channel, 0x00, 0x01, familyID, messageType}
 	message = append(message, data...)
 	message = append(message, End)
@@ -62,6 +62,9 @@ func Response(sysex []byte) (familyID byte, messageType byte, data []byte) {
 
 func ProgramNumber(number int) []byte {
 	number--
-	return []byte {byte(number) & 0b01111111, byte(number>>7)} 
+	return []byte{byte(number) & 0b01111111, byte(number >> 7)}
 }
 
+func UserSlotHeader(moduleID byte, slotID byte) []byte {
+	return []byte{moduleID, slotID}
+}
