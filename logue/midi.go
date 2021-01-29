@@ -18,7 +18,6 @@
 package logue
 
 import (
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -103,7 +102,6 @@ func setMidi(inIdx int, outIdx int) error {
 		reader.NoLogger(),
 		reader.IgnoreMIDIClock(),
 		reader.SysEx(func(pos *reader.Position, data []byte) {
-			fmt.Printf("%s", hex.Dump(sysex.SysEx(data).Raw()))
 			midiConn.ch <- sysex.SysEx(data).Raw()
 		}),
 		// write every message to the out port

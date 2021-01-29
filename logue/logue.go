@@ -18,7 +18,7 @@
 package logue
 
 import (
-	"encoding/hex"
+	//"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
@@ -188,7 +188,7 @@ func getData(requestType byte, requestDataHeader []byte, requestData []byte) <-c
 
 	sysexMessage = createSysex(requestType, requestDataHeader, requestData)
 
-	fmt.Printf("\nSEND:\n%s\n", hex.Dump(sysexMessage))
+	//fmt.Printf("\nSEND:\n%s\n", hex.Dump(sysexMessage))
 
 	replyChan := sendSysexAsync(sysexMessage)
 	reply := <-replyChan
@@ -199,7 +199,7 @@ func getData(requestType byte, requestDataHeader []byte, requestData []byte) <-c
 		return ch
 	}
 
-	fmt.Printf("\nRECEIVED:\n%s\n", hex.Dump(reply))
+	//fmt.Printf("\nRECEIVED:\n%s\n", hex.Dump(reply))
 	_, _, responseData := sysex.Response(reply)
 
 	if len(responseData) > 10 {
@@ -297,13 +297,13 @@ func GetUserSlotData(moduleType string, slotID byte, filename string) <-chan err
 	errChan := make(chan error, 1)
 
 	if resp.data != nil {
-		fmt.Printf("\nRECEIVED:\n%s\n", hex.Dump(resp.data))
+		//fmt.Printf("\nRECEIVED:\n%s\n", hex.Dump(resp.data))
 		mod := sysex.ToModule(resp.data)
-		dat := mod.FromModule()
-		fmt.Printf("\nModule:\n%s\n", hex.Dump(dat))
+		//dat := mod.FromModule()
+		//fmt.Printf("\nModule:\n%s\n", hex.Dump(dat))
 
-		fmt.Printf("\nManifest:\n%s\n", mod.Header.CreateManifestJSON("prologue"))
-		fmt.Printf("\nPayload:\n%s\n", hex.Dump(mod.Payload))
+		//fmt.Printf("\nManifest:\n%s\n", mod.Header.CreateManifestJSON("prologue"))
+		//fmt.Printf("\nPayload:\n%s\n", hex.Dump(mod.Payload))
 
 		files := map[string][]byte{
 			mod.Header.Name + "/" + "manifest.json": []byte(mod.Header.CreateManifestJSON("prologue")),

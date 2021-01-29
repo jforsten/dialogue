@@ -47,36 +47,6 @@ func ParseModuleSlot(str string) (string, byte, error) {
 	return moduleType, byte(moduleSlot), err
 }
 
-func convertBinaryDataToSysexData_(data []byte) []byte {
-	var outBuffer []byte
-	datalen := len(data)
-	//if datalen%7 != 0 {
-	//	panic("ERROR: Data cannot be converted")
-	//}
-	outBufferLen := datalen / 7 * 8
-	outBuffer = make([]byte, outBufferLen)
-
-	for i := 0; i < datalen/7; i++ {
-		outBuffer[i*8] =
-			(data[i*7]&0b10000000)>>7 +
-				(data[i*7+1]&0b10000000)>>6 +
-				(data[i*7+2]&0b10000000)>>5 +
-				(data[i*7+3]&0b10000000)>>4 +
-				(data[i*7+4]&0b10000000)>>3 +
-				(data[i*7+5]&0b10000000)>>2 +
-				(data[i*7+6]&0b10000000)>>1
-
-		outBuffer[i*8+1] = data[i*7] & 0b01111111
-		outBuffer[i*8+2] = data[i*7+1] & 0b01111111
-		outBuffer[i*8+3] = data[i*7+2] & 0b01111111
-		outBuffer[i*8+4] = data[i*7+3] & 0b01111111
-		outBuffer[i*8+5] = data[i*7+4] & 0b01111111
-		outBuffer[i*8+6] = data[i*7+5] & 0b01111111
-		outBuffer[i*8+7] = data[i*7+6] & 0b01111111
-	}
-	return outBuffer
-}
-
 func convertBinaryDataToSysexData(data []byte) []byte {
 	var outBuffer []byte
 	datalen := len(data)
@@ -122,28 +92,6 @@ func convertSysexDataToBinaryData(sysexData []byte) []byte {
 	return outBuffer
 }
 
-func convertSysexDataToBinaryData_(sysexData []byte) []byte {
-	var outBuffer []byte
-	datalen := len(sysexData)
-	fmt.Printf("datalen=%d   mod8=%d\n", datalen, datalen%8)
-	if datalen%8 != 0 {
-		//panic("ERROR: Data cannot be converted")
-	}
-	outBufferLen := datalen / 8 * 7
-	outBuffer = make([]byte, outBufferLen)
-
-	for i := 0; i < datalen/8; i++ {
-		outBuffer[i*7] = sysexData[i*8+1] + ((sysexData[i*8] << 7) & 0b10000000)
-		outBuffer[i*7+1] = sysexData[i*8+2] + ((sysexData[i*8] << 6) & 0b10000000)
-		outBuffer[i*7+2] = sysexData[i*8+3] + ((sysexData[i*8] << 5) & 0b10000000)
-		outBuffer[i*7+3] = sysexData[i*8+4] + ((sysexData[i*8] << 4) & 0b10000000)
-		outBuffer[i*7+4] = sysexData[i*8+5] + ((sysexData[i*8] << 3) & 0b10000000)
-		outBuffer[i*7+5] = sysexData[i*8+6] + ((sysexData[i*8] << 2) & 0b10000000)
-		outBuffer[i*7+6] = sysexData[i*8+7] + ((sysexData[i*8] << 1) & 0b10000000)
-	}
-	return outBuffer
-}
-
 func getDataFromZipFile(extension string, zipFile string) []byte {
 	var buf []byte
 
@@ -153,16 +101,12 @@ func getDataFromZipFile(extension string, zipFile string) []byte {
 	defer r.Close()
 
 	for _, f := range r.File {
-		fmt.Println(f.Name)
+		
 		rc, err := f.Open()
 		checkError(err)
 
-		fmt.Println(f.Name)
-
 		if filepath.Ext(f.Name) == extension {
-
-			fmt.Println("FOUND")
-
+		
 			buf = make([]byte, f.UncompressedSize)
 			_, err := rc.Read(buf)
 

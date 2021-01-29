@@ -17,7 +17,7 @@
 
 package sysex
 
-import "fmt"
+// import "fmt"
 
 // Start byte of Sysex message
 const Start byte = 0xF0
@@ -68,6 +68,5 @@ func ProgramNumber(number int) []byte {
 }
 
 func UserSlotHeader(moduleType string, slotID byte) []byte {
-	fmt.Printf("modType:%s, slot:%d\n", moduleType, slotID)
 	return []byte{ModuleID(moduleType), slotID}
 }

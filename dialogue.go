@@ -123,7 +123,7 @@ func main() {
 		checkError(err)
 		err = <-logue.SetUserSlotData(moduleType, moduleSlot, filename)
 		checkError(err)
-		fmt.Printf("\nUser data read!\n")
+		fmt.Printf("\nUser data sent to device!\n")
 	}
 }
 
