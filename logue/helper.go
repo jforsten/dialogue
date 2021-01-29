@@ -20,6 +20,9 @@ package logue
 import (
 	"archive/zip"
 	"bytes"
+	"strconv"
+	"strings"
+
 	//"encoding/hex"
 	"fmt"
 	"io"
@@ -34,7 +37,17 @@ func checkError(err error) {
 	}
 }
 
-func convertBinaryDataToSysexData(data []byte) []byte {
+func ParseModuleSlot(str string) (string, byte, error) {
+	res := strings.Split(str, "/")
+	if res == nil || len(res) != 2 {
+		return "", 0, fmt.Errorf("Wrong  module/slot option format!")
+	}
+	moduleType := res[0]
+	moduleSlot, err := strconv.Atoi(res[1])
+	return moduleType, byte(moduleSlot), err
+}
+
+func convertBinaryDataToSysexData_(data []byte) []byte {
 	var outBuffer []byte
 	datalen := len(data)
 	//if datalen%7 != 0 {
@@ -45,15 +58,15 @@ func convertBinaryDataToSysexData(data []byte) []byte {
 
 	for i := 0; i < datalen/7; i++ {
 		outBuffer[i*8] =
-			(data[i*7  ]&0b10000000)>>7 +
-			(data[i*7+1]&0b10000000)>>6 +
-			(data[i*7+2]&0b10000000)>>5 +
-			(data[i*7+3]&0b10000000)>>4 +
-			(data[i*7+4]&0b10000000)>>3 +
-			(data[i*7+5]&0b10000000)>>2 +
-			(data[i*7+6]&0b10000000)>>1
+			(data[i*7]&0b10000000)>>7 +
+				(data[i*7+1]&0b10000000)>>6 +
+				(data[i*7+2]&0b10000000)>>5 +
+				(data[i*7+3]&0b10000000)>>4 +
+				(data[i*7+4]&0b10000000)>>3 +
+				(data[i*7+5]&0b10000000)>>2 +
+				(data[i*7+6]&0b10000000)>>1
 
-		outBuffer[i*8+1] = data[i*7  ] & 0b01111111
+		outBuffer[i*8+1] = data[i*7] & 0b01111111
 		outBuffer[i*8+2] = data[i*7+1] & 0b01111111
 		outBuffer[i*8+3] = data[i*7+2] & 0b01111111
 		outBuffer[i*8+4] = data[i*7+3] & 0b01111111
@@ -64,12 +77,35 @@ func convertBinaryDataToSysexData(data []byte) []byte {
 	return outBuffer
 }
 
+func convertBinaryDataToSysexData(data []byte) []byte {
+	var outBuffer []byte
+	datalen := len(data)
+	for i := 0; i < datalen/7; i++ {
+		outBuffer = append(outBuffer, binDataToSysexData(data[i*7:i*7+7])...)
+	}
+	if datalen%7 != 0 {
+		outBuffer = append(outBuffer, binDataToSysexData(data[len(data)-(datalen%7):])...)
+	}
+	return outBuffer
+}
+
+func binDataToSysexData(data []byte) []byte {
+	var outBuffer []byte
+	outBuffer = make([]byte, len(data)+1)
+
+	for i := 0; i < len(data); i++ {
+		outBuffer[0] += (data[i] & 0b10000000) >> (7 - i)
+		outBuffer[i+1] = data[i] & 0b01111111
+	}
+	return outBuffer
+}
+
 func sysexDataToBinData(data []byte) []byte {
 	var outBuffer []byte
 	outBuffer = make([]byte, len(data)-1)
 
 	for i := 0; i < len(data)-1; i++ {
-		outBuffer[i] = data[i+1] + ((data[0] << (len(data)-1-i)) & 0b10000000)
+		outBuffer[i] = data[i+1] + ((data[0] << (len(data) - 1 - i)) & 0b10000000)
 	}
 	return outBuffer
 }
@@ -77,21 +113,19 @@ func sysexDataToBinData(data []byte) []byte {
 func convertSysexDataToBinaryData(sysexData []byte) []byte {
 	var outBuffer []byte
 	datalen := len(sysexData)
-	fmt.Printf("datalen=%d   mod8=%d\n",datalen,datalen%8)
 	for i := 0; i < datalen/8; i++ {
 		outBuffer = append(outBuffer, sysexDataToBinData(sysexData[i*8:i*8+8])...)
 	}
-	if datalen % 8 != 0 {
+	if datalen%8 != 0 {
 		outBuffer = append(outBuffer, sysexDataToBinData(sysexData[len(sysexData)-(datalen%8):])...)
 	}
 	return outBuffer
 }
 
-
 func convertSysexDataToBinaryData_(sysexData []byte) []byte {
 	var outBuffer []byte
 	datalen := len(sysexData)
-	fmt.Printf("datalen=%d   mod8=%d\n",datalen,datalen%8)
+	fmt.Printf("datalen=%d   mod8=%d\n", datalen, datalen%8)
 	if datalen%8 != 0 {
 		//panic("ERROR: Data cannot be converted")
 	}
@@ -99,7 +133,7 @@ func convertSysexDataToBinaryData_(sysexData []byte) []byte {
 	outBuffer = make([]byte, outBufferLen)
 
 	for i := 0; i < datalen/8; i++ {
-		outBuffer[i*7  ] = sysexData[i*8+1] + ((sysexData[i*8] << 7) & 0b10000000)
+		outBuffer[i*7] = sysexData[i*8+1] + ((sysexData[i*8] << 7) & 0b10000000)
 		outBuffer[i*7+1] = sysexData[i*8+2] + ((sysexData[i*8] << 6) & 0b10000000)
 		outBuffer[i*7+2] = sysexData[i*8+3] + ((sysexData[i*8] << 5) & 0b10000000)
 		outBuffer[i*7+3] = sysexData[i*8+4] + ((sysexData[i*8] << 4) & 0b10000000)
@@ -110,7 +144,7 @@ func convertSysexDataToBinaryData_(sysexData []byte) []byte {
 	return outBuffer
 }
 
-func getDataFromZipFile(extension string, zipFile string) []byte {	
+func getDataFromZipFile(extension string, zipFile string) []byte {
 	var buf []byte
 
 	// Open a zip archive for reading.
@@ -123,8 +157,12 @@ func getDataFromZipFile(extension string, zipFile string) []byte {
 		rc, err := f.Open()
 		checkError(err)
 
+		fmt.Println(f.Name)
+
 		if filepath.Ext(f.Name) == extension {
-			
+
+			fmt.Println("FOUND")
+
 			buf = make([]byte, f.UncompressedSize)
 			_, err := rc.Read(buf)
 

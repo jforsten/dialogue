@@ -20,7 +20,6 @@ package logue
 import (
 	"encoding/hex"
 	"fmt"
-	"hash/crc32"
 	"strings"
 	"time"
 
@@ -200,27 +199,14 @@ func getData(requestType byte, requestDataHeader []byte, requestData []byte) <-c
 		return ch
 	}
 
+	fmt.Printf("\nRECEIVED:\n%s\n", hex.Dump(reply))
 	_, _, responseData := sysex.Response(reply)
 
 	if len(responseData) > 10 {
 
 		responseDataHeaderSize := logue.getDeviceSpecificInfo().sysexMap[requestType].responseDataHeaderSize
-		//fmt.Printf("responseData:\n%s\n", hex.Dump(responseData))
 		dataSection := responseData[responseDataHeaderSize:]
-		//fmt.Printf("dataSection:\n%s\n", hex.Dump(dataSection))
 		binData = convertSysexDataToBinaryData(dataSection)
-		d := binData[8:]
-
-		crc := crc32.ChecksumIEEE(d)
-		fmt.Printf("size:%x, crc32:\n%x\n", len(binData[8:]), crc)
-
-		dd := []byte{0x04, 0x06, 0x61, 0x04, 0x0C, 0x00, 0x00, 0x58, 0x15, 0x04, 0x00, 0x1C, 0x04,
-			0x01, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 00, 00, 00, 00, 00, 01}
-		fmt.Printf("\nT:%s\n", hex.Dump(convertSysexDataToBinaryData(dd[2:])))
-
-		//fmt.Printf("binData:\n%s\n", hex.Dump(binData))
-		//binData2 := convertSysexDataToBinaryData_(dataSection)
-		//fmt.Printf("binData2:\n%s\n", hex.Dump(binData2))
 
 		if binData == nil {
 			err = fmt.Errorf("ERROR: Received wrong data!")
@@ -238,7 +224,7 @@ func SetProgram(programNumber int, filename string) <-chan error {
 	var msgType byte
 	var header []byte
 
-	data := getDataFromZipFile(logue.getDeviceSpecificInfo().programFileExtension, filename)
+	data := getDataFromZipFile(logue.getDeviceSpecificInfo().programDataFileExtension, filename)
 
 	if logue.getDeviceSpecificInfo().programRange.has(programNumber) {
 		msgType = sysexMessageType.ProgramDataDump
@@ -270,8 +256,6 @@ func GetProgram(programNumber int, filename string) <-chan error {
 
 	errChan := make(chan error, 1)
 
-	//fmt.Printf("\nRECEIVED:\n%s\n", hex.Dump(resp.data))
-
 	err := saveProgramDataToFile(resp.data, filename)
 
 	if err != nil {
@@ -284,40 +268,29 @@ func GetProgram(programNumber int, filename string) <-chan error {
 	return errChan
 }
 
-func SetUserSlotData(moduleID byte, slotID byte) <-chan error {
-
+func SetUserSlotData(moduleType string, slotID byte, filename string) <-chan error {
 	errChan := make(chan error, 1)
 
-	m := getDataFromZipFile(".json", "pluck.prlgunit")
-	fmt.Printf("FILE:%s\n", string(m))
-	man := sysex.ToModuleManifest(string(m))
-	b := getDataFromZipFile(".bin", "pluck.prlgunit")
-	plat, modData := man.CreateModuleData(b)
-	fmt.Println(plat)
-	fmt.Println(hex.Dump(modData))
-
-	modData = append(modData, make([]byte,7)...)
+	m := getDataFromZipFile(".json", filename)
+	man := sysex.ToModuleManifest(m)
+	b := getDataFromZipFile(".bin", filename)
+	_, modData := man.CreateModuleData(b)
 
 	resp := <-getData(
 		sysexMessageType.UserSlotData,
-		//sysexMessageType.UserSlotStatusRequest,
-		sysex.UserSlotHeader(moduleID, slotID),
+		sysex.UserSlotHeader(moduleType, slotID),
 		modData,
 	)
 
 	errChan <- resp.err
 	return errChan
-
 }
 
-func GetUserSlotData(moduleID byte, slotID byte, filename string) <-chan error {
+func GetUserSlotData(moduleType string, slotID byte, filename string) <-chan error {
 
 	resp := <-getData(
-		//sysexMessageType.UserModuleInfoRequest,
-		//[]byte{0x01},
 		sysexMessageType.UserSlotDataRequest,
-		//sysexMessageType.UserSlotStatusRequest,
-		sysex.UserSlotHeader(moduleID, slotID),
+		sysex.UserSlotHeader(moduleType, slotID),
 		nil,
 	)
 
@@ -329,18 +302,22 @@ func GetUserSlotData(moduleID byte, slotID byte, filename string) <-chan error {
 		dat := mod.FromModule()
 		fmt.Printf("\nModule:\n%s\n", hex.Dump(dat))
 
-		fmt.Println()
-		sysex.TestJSON()
+		fmt.Printf("\nManifest:\n%s\n", mod.Header.CreateManifestJSON("prologue"))
+		fmt.Printf("\nPayload:\n%s\n", hex.Dump(mod.Payload))
 
-		/*
-			err := saveProgramDataToFile(resp.data, filename)
+		files := map[string][]byte{
+			mod.Header.Name + "/" + "manifest.json": []byte(mod.Header.CreateManifestJSON("prologue")),
+			mod.Header.Name + "/" + "payload.bin": mod.Payload,
+		}
 
-			if err != nil {
-				err := fmt.Errorf("ERROR: Wrong data!")
-				errChan <- err
-				return errChan
-			}
-		*/
+		err := createZipFile(filename, files)
+
+		if err != nil {
+			err := fmt.Errorf("ERROR:Cannot create file!")
+			errChan <- err
+			return errChan
+		}
+
 	}
 	errChan <- resp.err
 	return errChan

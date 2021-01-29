@@ -39,7 +39,8 @@ func main() {
 		explicitMidiOutIdx = flag.Int("out", -1, "Set Midi output (index) explicitely. -1 = Auto detect.")
 		enablePortListing  = flag.Bool("l", false, "Show available MIDI ports.")
 		patchNumber        = flag.Int("p", -1, "Program number. -1 = Edit buffer.")
-		mode        	   = flag.String("m", "pw", "READ patch from device and save to file.")
+		mode        	   = flag.String("m", "pw", "Operation mode")
+		moduleTypeSlot     = flag.String("s", "osc/0", "Module type & slot")
 	)
 	flag.Parse()
 
@@ -112,17 +113,17 @@ func main() {
 			fmt.Printf("\nProgram file '%s' sent to device!\n", filename)
 		}
 	case "ur":
-		err = <-logue.GetUserSlotData(4, 11, "")
+		moduleType, moduleSlot, err := logue.ParseModuleSlot(*moduleTypeSlot)
 		checkError(err)
-		if err == nil {
-			fmt.Printf("\nUser data read!\n")
-		}
+		err = <-logue.GetUserSlotData(moduleType, byte(moduleSlot), filename)
+		checkError(err)
+		fmt.Printf("\nUser data read - %s (%d)!\n", moduleType, moduleSlot)
 	case "uw":
-		err = <-logue.SetUserSlotData(4, 0)
+		moduleType, moduleSlot, err := logue.ParseModuleSlot(*moduleTypeSlot)
 		checkError(err)
-		if err == nil {
-			fmt.Printf("\nUser data read!\n")
-		}
+		err = <-logue.SetUserSlotData(moduleType, moduleSlot, filename)
+		checkError(err)
+		fmt.Printf("\nUser data read!\n")
 	}
 }
 

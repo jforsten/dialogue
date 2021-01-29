@@ -18,16 +18,17 @@
 package sysex
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	"hash/crc32"
 	"fmt"
+	"hash/crc32"
 )
 
 type Version struct {
-	Patch		byte
-	Minor		byte
-	Major		byte
+	Patch byte
+	Minor byte
+	Major byte
 }
 
 func ToVersion(versionData []byte) Version {
@@ -56,12 +57,12 @@ func FromVersionString(ver string) Version {
 	fmt.Sscanf(ver, "%d.%d-%d", &v.Major, &v.Minor, &v.Patch)
 	return v
 }
- 
-type Parameter struct  {
-	MinValue	  int8 // 2's complement
-	MaxValue	  int8 // 2's complement
+
+type Parameter struct {
+	MinValue      int8   // 2's complement
+	MaxValue      int8   // 2's complement
 	ParameterType string // 0x00 = %, 0x02 = ""
-	Name	      string
+	Name          string
 }
 
 func ToParameter(parameterData []byte) Parameter {
@@ -73,7 +74,7 @@ func ToParameter(parameterData []byte) Parameter {
 	} else {
 		p.ParameterType = ""
 	}
-	p.Name = string(parameterData[3:13])
+	p.Name = string(bytes.Trim(parameterData[3:13], "\x00")) // remove zeros from the end
 	return p
 }
 
@@ -89,40 +90,39 @@ func (p Parameter) FromParameter() []byte {
 	}
 	buf = append(buf, t)
 	buf = append(buf, []byte(p.Name)...)
-	padding := make([]byte, 3 + 10 - len(p.Name))
+	padding := make([]byte, 3+10-len(p.Name))
 	buf = append(buf, padding...)
 	return buf
 }
 
 type Header struct {
-	TotalSize		uint32
-	Crc32			uint32
-	ModuleID		byte
-	APIVersion      Version
-	DeveloperID		uint32
-	ProgramID		uint32
-	Version			Version
-	Name            string
-	NumOfParams     byte
-	Parameters      []Parameter
-	PayloadSize   uint32
+	TotalSize   uint32
+	Crc32       uint32
+	ModuleID    byte
+	APIVersion  Version
+	DeveloperID uint32
+	ProgramID   uint32
+	Version     Version
+	Name        string
+	NumOfParams byte
+	Parameters  []Parameter
+	PayloadSize uint32
 }
 
 func ToHeader(headerData []byte) Header {
 	h := Header{}
 	h.TotalSize = binary.LittleEndian.Uint32(headerData[0:4])
-	fmt.Printf("TotalSize:%d", h.TotalSize)
 	h.Crc32 = binary.LittleEndian.Uint32(headerData[4:8])
 	h.ModuleID = headerData[8]
 	h.APIVersion = ToVersion(headerData[10:13])
 	h.DeveloperID = binary.LittleEndian.Uint32(headerData[14:18])
 	h.ProgramID = binary.LittleEndian.Uint32(headerData[18:22])
 	h.Version = ToVersion(headerData[22:25])
-	h.Name = string(headerData[26:39])
+	h.Name = string(bytes.Trim(headerData[26:39], "\x00")) // remove zeros from the end
 	h.NumOfParams = headerData[40]
 
-	for i:=0; i<int(h.NumOfParams); i++ {
-		p := ToParameter(headerData[(44+i*16):(57+i*16)])
+	for i := 0; i < int(h.NumOfParams); i++ {
+		p := ToParameter(headerData[(44 + i*16):(57 + i*16)])
 		h.Parameters = append(h.Parameters, p)
 	}
 	h.PayloadSize = binary.LittleEndian.Uint32(headerData[1028:1032])
@@ -131,7 +131,7 @@ func ToHeader(headerData []byte) Header {
 
 func (h Header) FromHeader() []byte {
 	var buf []byte
-	
+
 	// Size
 	size := make([]byte, 4)
 	binary.LittleEndian.PutUint32(size, h.TotalSize)
@@ -155,7 +155,7 @@ func (h Header) FromHeader() []byte {
 	progID := make([]byte, 4)
 	binary.LittleEndian.PutUint32(progID, h.ProgramID)
 	buf = append(buf, progID...)
-	
+
 	buf = append(buf, h.Version.FromVersion()...)
 
 	buf = append(buf, []byte(h.Name)...)
@@ -165,7 +165,7 @@ func (h Header) FromHeader() []byte {
 
 	buf[40] = h.NumOfParams
 
-	for i:=0; i<int(h.NumOfParams); i++ {
+	for i := 0; i < int(h.NumOfParams); i++ {
 		buf = append(buf, h.Parameters[i].FromParameter()...)
 	}
 
@@ -181,7 +181,7 @@ func (h Header) FromHeader() []byte {
 }
 
 type Module struct {
-	Header Header
+	Header  Header
 	Payload []byte
 }
 
@@ -189,9 +189,7 @@ func ToModule(data []byte) Module {
 	m := Module{}
 	m.Header = Header{}
 	m.Header = ToHeader(data[0:1032])
-	fmt.Printf("\n%x %x %x %x\n", data[0], data[1], data[2], data[3])
-	m.Payload = data[1032: 1032 + m.Header.PayloadSize]	
-	fmt.Printf("\n ToMod HdrSize: %d, TotalSize:%d\n", len(m.Header.FromHeader()), m.Header.TotalSize)
+	m.Payload = data[1032 : 1032+m.Header.PayloadSize]
 	return m
 }
 
@@ -199,8 +197,7 @@ func (m Module) FromModule() []byte {
 	var buf []byte
 	buf = append(buf, m.Header.FromHeader()...)
 	buf = append(buf, m.Payload...)
-	fmt.Printf("\nFromMod HdrSize: %d, TotalSize:%d\n", len(m.Header.FromHeader()), m.Header.TotalSize)
-	buf = append(buf, make([]byte, int(m.Header.TotalSize) + 8 - len(buf))...)
+	buf = append(buf, make([]byte, int(m.Header.TotalSize)+8-len(buf))...)
 	return buf
 }
 
@@ -230,21 +227,31 @@ const TestManifest string = `
 
 func ModuleName(moduleID byte) string {
 	switch moduleID {
-	case 1: return "modfx"
-	case 2: return "delfx"
-	case 3: return "revfx"
-	case 4: return "osc"
-	default: return "unknown"
+	case 1:
+		return "modfx"
+	case 2:
+		return "delfx"
+	case 3:
+		return "revfx"
+	case 4:
+		return "osc"
+	default:
+		return "unknown"
 	}
 }
 
 func ModuleID(module string) byte {
 	switch module {
-	case "modfx": return 1
-	case "delfx": return 2
-	case "revfx": return 3
-	case "osc":   return 4
-	default: return 0
+	case "modfx":
+		return 1
+	case "delfx":
+		return 2
+	case "revfx":
+		return 3
+	case "osc":
+		return 4
+	default:
+		return 0
 	}
 }
 
@@ -262,14 +269,14 @@ type ModuleManifest struct {
 	} `json:"header"`
 }
 
-func ToModuleManifest(jsonStr string) ModuleManifest {
+func ToModuleManifest(jsonData []byte) ModuleManifest {
 	man := ModuleManifest{}
-	json.Unmarshal([]byte(jsonStr), &man)
+	json.Unmarshal(jsonData, &man)
 	return man
 }
 
 func (h Header) ToModuleManifest(platform string) ModuleManifest {
-	man := ModuleManifest{}	
+	man := ModuleManifest{}
 	man.Header.Platform = platform
 	man.Header.Module = ModuleName(h.ModuleID)
 	man.Header.API = h.APIVersion.VersionString()
@@ -278,11 +285,14 @@ func (h Header) ToModuleManifest(platform string) ModuleManifest {
 	man.Header.Version = h.Version.VersionString()
 	man.Header.Name = h.Name
 	man.Header.NumParam = int(h.NumOfParams)
+	man.Header.Params = [][]interface{}{}
 	for i := 0; i < man.Header.NumParam; i++ {
-		man.Header.Params[0][0] = h.Parameters[i].Name
-		man.Header.Params[0][1] = h.Parameters[i].MinValue
-		man.Header.Params[0][2] = h.Parameters[i].MaxValue
-		man.Header.Params[0][3] = h.Parameters[i].ParameterType
+		p := []interface{}{}
+		p = append(p, h.Parameters[i].Name)
+		p = append(p, h.Parameters[i].MinValue)
+		p = append(p, h.Parameters[i].MaxValue)
+		p = append(p, h.Parameters[i].ParameterType)
+		man.Header.Params = append(man.Header.Params, p)
 	}
 	return man
 }
@@ -300,10 +310,10 @@ func (mf ModuleManifest) FromModuleManifest() (string, Header) {
 	h.Parameters = []Parameter{}
 	for i := 0; i < int(h.NumOfParams); i++ {
 		p := Parameter{}
-		p.Name = fmt.Sprintf("%v",mf.Header.Params[i][0])
+		p.Name = fmt.Sprintf("%v", mf.Header.Params[i][0])
 		p.MinValue = int8((mf.Header.Params[i][1]).(float64))
 		p.MaxValue = int8((mf.Header.Params[i][2]).(float64))
-		p.ParameterType = fmt.Sprintf("%v",mf.Header.Params[i][3])
+		p.ParameterType = fmt.Sprintf("%v", mf.Header.Params[i][3])
 		h.Parameters = append(h.Parameters, p)
 	}
 	return platform, h
@@ -315,7 +325,7 @@ func TestJSON() {
 	fmt.Println(man)
 	man.Header.Params[3][0] = "NONE"
 	man.Header.Params[3][2] = 44
-	
+
 	fmt.Printf("Platform:%s, NumOfPar:%d Par3:%s\n", man.Header.Platform, man.Header.NumParam, man.Header.Params[3])
 
 	s, _ := json.Marshal(&man)
@@ -325,7 +335,7 @@ func TestJSON() {
 
 func (h Header) CreateManifestJSON(platform string) string {
 	man := h.ToModuleManifest(platform)
-	jsonBytes, _ := json.Marshal(man)
+	jsonBytes, _ := json.MarshalIndent(man," ", "   ")
 	return string(jsonBytes)
 }
 
@@ -335,8 +345,8 @@ func (mf ModuleManifest) CreateModuleData(payload []byte) (string, []byte) {
 	platform, mod.Header = mf.FromModuleManifest()
 	mod.Payload = payload
 	mod.Header.PayloadSize = uint32(len(payload))
-	mod.Header.TotalSize = 0xc84
-	mod.Header.Crc32 =  crc32.ChecksumIEEE(mod.FromModule()[8:])
-	
+	mod.Header.TotalSize = uint32(len(mod.Header.FromHeader())) + mod.Header.PayloadSize
+	mod.Header.Crc32 = crc32.ChecksumIEEE(mod.FromModule()[8:])
+
 	return platform, mod.FromModule()
 }
