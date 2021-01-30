@@ -39,8 +39,9 @@ func main() {
 		explicitMidiOutIdx = flag.Int("out", -1, "Set Midi output (index) explicitely. -1 = Auto detect.")
 		enablePortListing  = flag.Bool("l", false, "Show available MIDI ports.")
 		patchNumber        = flag.Int("p", -1, "Program number. -1 = Edit buffer.")
-		mode        	   = flag.String("m", "pw", "Operation mode")
+		mode               = flag.String("m", "pw", "Operation mode")
 		moduleTypeSlot     = flag.String("s", "osc/0", "Module type & slot")
+		debug              = flag.Bool("d", false, "Enable extra debug info")
 	)
 	flag.Parse()
 
@@ -50,6 +51,10 @@ func main() {
 	}
 
 	filename := flag.Arg(0)
+
+	if *debug {
+		logue.EnableDebugging()
+	}
 
 	err := logue.Open()
 	checkError(err)
@@ -89,7 +94,7 @@ func main() {
 	checkError(err)
 
 	// Exit if no files to process...
-	if filename == "" {
+	if filename == "" && !(*mode == "ud" || *mode == "ui") {
 		// Select program if opted even no files to process
 		if *patchNumber > 0 {
 			fmt.Printf("Selecting program <%d>\n", *patchNumber)
@@ -100,30 +105,39 @@ func main() {
 
 	// Use patch number only if in valid range (1-500). Defaults to edit buffer...
 	switch *mode {
+
 	case "pr":
 		err = <-logue.GetProgram(*patchNumber, filename)
 		checkError(err)
 		if err == nil {
 			fmt.Printf("\nProgram file '%s' saved to file!\n", filename)
 		}
+
 	case "pw":
 		err = <-logue.SetProgram(*patchNumber, filename)
 		checkError(err)
 		if err == nil {
 			fmt.Printf("\nProgram file '%s' sent to device!\n", filename)
 		}
+
 	case "ur":
-		moduleType, moduleSlot, err := logue.ParseModuleSlot(*moduleTypeSlot)
+		err = <-logue.GetUserSlotData(*moduleTypeSlot, filename)
 		checkError(err)
-		err = <-logue.GetUserSlotData(moduleType, byte(moduleSlot), filename)
-		checkError(err)
-		fmt.Printf("\nUser data read - %s (%d)!\n", moduleType, moduleSlot)
+		fmt.Printf("\nUser data read - %s!\n", *moduleTypeSlot)
+
 	case "uw":
-		moduleType, moduleSlot, err := logue.ParseModuleSlot(*moduleTypeSlot)
-		checkError(err)
-		err = <-logue.SetUserSlotData(moduleType, moduleSlot, filename)
+		err = <-logue.SetUserSlotData(*moduleTypeSlot, filename)
 		checkError(err)
 		fmt.Printf("\nUser data sent to device!\n")
+
+	case "ud":
+		err = <-logue.DeleteUserData(*moduleTypeSlot)
+		checkError(err)
+		fmt.Printf("\nUser data '%s' deleted!\n", *moduleTypeSlot)
+
+	case "ui":
+		err = <-logue.GetUserDataInfo(*moduleTypeSlot)
+		checkError(err)
 	}
 }
 

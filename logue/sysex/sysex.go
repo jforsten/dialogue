@@ -17,8 +17,6 @@
 
 package sysex
 
-// import "fmt"
-
 // Start byte of Sysex message
 const Start byte = 0xF0
 
@@ -58,7 +56,6 @@ func Response(sysex []byte) (familyID byte, messageType byte, data []byte) {
 	}
 
 	data = sysex[7 : len(sysex)-1]
-
 	return familyID, messageType, data
 }
 
@@ -67,6 +64,6 @@ func ProgramNumber(number int) []byte {
 	return []byte{byte(number) & 0b01111111, byte(number >> 7)}
 }
 
-func UserSlotHeader(moduleType string, slotID byte) []byte {
-	return []byte{ModuleID(moduleType), slotID}
+func UserSlotHeader(moduleID byte, slotID byte) []byte {
+	return []byte{moduleID, slotID}
 }

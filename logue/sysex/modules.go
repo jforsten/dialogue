@@ -350,3 +350,17 @@ func (mf ModuleManifest) CreateModuleData(payload []byte) (string, []byte) {
 
 	return platform, mod.FromModule()
 }
+
+type ModuleInfo struct {
+	MaxSlotSize   	uint32
+	MaxProgramSize  uint32
+	SlotCount    	byte
+}
+
+func ToModuleInfo(data []byte) ModuleInfo {
+	mi := ModuleInfo{} 
+	mi.MaxSlotSize = binary.LittleEndian.Uint32(data[0:4])
+	mi.MaxProgramSize = binary.LittleEndian.Uint32(data[4:8])
+	mi.SlotCount = data[8]
+	return mi
+}

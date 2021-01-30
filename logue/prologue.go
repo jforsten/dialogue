@@ -33,10 +33,10 @@ var prologueSysexMap = map[byte]SysexMessageMap {
 	CurrentProgramDataDumpRequest : {CurrentProgramDataDump, 0},
 	ProgramDataDumpRequest : {ProgramDataDump, 2},
 	UserSlotDataRequest : {UserSlotData, 3},
-	UserSlotStatusRequest : {UserSlotStatus, 3},
-	UserModuleInfoRequest : {UserModuleInfo, 2},
 	UserSlotData : {UserSlotDataRequest, 0},
-	
+	UserSlotStatusRequest : {UserSlotStatus, 3},
+	UserModuleInfoRequest : {UserModuleInfo, 2},		
+	ClearUserSlot : {DataLoadCompleted, 0},
 }
 
 func (p Prologue) getDeviceSpecificInfo() DeviceSpecificInfo {

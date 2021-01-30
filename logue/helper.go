@@ -28,6 +28,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
+	sysex "logue/logue/sysex"
 )
 
 func checkError(err error) {
@@ -37,14 +38,21 @@ func checkError(err error) {
 	}
 }
 
-func ParseModuleSlot(str string) (string, byte, error) {
+func ParseModuleSlot(str string) (byte, byte, bool, error) {
+	
+	isModuleOnly := false
+
+	if sysex.ModuleID(str) > 0 {
+		isModuleOnly = true
+		return sysex.ModuleID(str), 0, isModuleOnly, nil
+	} 
+
 	res := strings.Split(str, "/")
-	if res == nil || len(res) != 2 {
-		return "", 0, fmt.Errorf("Wrong  module/slot option format!")
+	if res == nil || len(res) != 2 || sysex.ModuleID(res[0]) == 0 {
+		return 0, 0, isModuleOnly, fmt.Errorf("Wrong  module/slot option format!")
 	}
-	moduleType := res[0]
 	moduleSlot, err := strconv.Atoi(res[1])
-	return moduleType, byte(moduleSlot), err
+	return sysex.ModuleID(res[0]), byte(moduleSlot), isModuleOnly, err
 }
 
 func convertBinaryDataToSysexData(data []byte) []byte {
@@ -149,3 +157,5 @@ func createZipFile(outname string, fileList map[string][]byte) error {
 	err = ioutil.WriteFile(outname, buf.Bytes(), 0777)
 	return err
 }
+
+

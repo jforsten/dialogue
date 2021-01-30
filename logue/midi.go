@@ -132,7 +132,7 @@ func sendSysexAsync(sysexData []byte) <-chan []byte {
 	case reply := <-midiConn.ch:
 		replyChan <- reply
 		return replyChan
-	case <-time.After(10 * time.Second):
+	case <-time.After(15 * time.Second):
 		fmt.Printf("ERROR: Timeout!")
 		replyChan <- nil
 		return replyChan
