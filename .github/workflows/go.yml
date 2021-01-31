@@ -8,7 +8,6 @@ on:
 
 jobs:
   win:
-    if: ${{ false }}  # disable for now
     runs-on: windows-latest
     defaults:
       run:
