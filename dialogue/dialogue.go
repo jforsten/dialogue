@@ -141,7 +141,6 @@ func getData(requestType byte, requestDataHeader []byte, requestData []byte) <-c
 	_, _, responseData := sysex.Response(reply)
 
 	if len(responseData) > 10 {
-		fmt.Println(message.ResponseInfo[requestType])
 		responseDataHeaderSize := message.ResponseInfo[requestType].HeaderSize
 		dataSection := responseData[responseDataHeaderSize:]
 		binData = convertSysexDataToBinaryData(dataSection)
