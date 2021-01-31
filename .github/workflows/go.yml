@@ -26,6 +26,9 @@ jobs:
           Test release
         draft: false
         prerelease: false
+    - name: Get upload path
+      id: upload
+      run: echo "UPLOAD_PATH= ${{ steps.create_release.outputs.upload_url }} >> $GITHUB_ENV  
   win:  
     runs-on: windows-latest
     defaults:
@@ -54,7 +57,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+        upload_url: ${{ env.UPLOAD_PATH }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
         asset_path: ./dialogue.exe
         asset_name: dialogue.exe
         asset_content_type: application/octet-stream
@@ -67,14 +70,15 @@ jobs:
           stable: 'false'
           go-version: '1.15.6'
       - name: Build
-        run: go build  
+        run: |
+          go build -o dialogue-osx
       - name: Upload Release Asset
         id: upload-release-asset 
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: ./dialogue
-          asset_name: dialogue
+          upload_url: ${{ env.UPLOAD_PATH }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+          asset_path: ./dialogue-osx
+          asset_name: dialogue-osx
           asset_content_type: application/octet-stream
