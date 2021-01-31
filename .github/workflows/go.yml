@@ -7,30 +7,8 @@ on:
     branches: [ master ]
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Get current date
-      id: date
-      run: echo "MY_DATE=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-      with:
-        tag_name: ${{ env.MY_DATE }}
-        release_name: Release ${{ env.MY_DATE }}
-        body: |
-          Test release
-        draft: false
-        prerelease: false
-    - name: Get upload path
-      id: upload
-      run: echo "UPLOAD_PATH='${{ steps.create_release.outputs.upload_url }}'" >> $GITHUB_ENV  
-  win:  
-    needs: setup
+  win:
+    if: ${{ false }}  # disable for now
     runs-on: windows-latest
     defaults:
       run:
@@ -52,18 +30,7 @@ jobs:
         go build -ldflags="-extldflags=-static"
         pwd
         ls -la
-    - name: Upload Release Asset
-      id: upload-release-asset 
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ env.UPLOAD_PATH }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: ./dialogue.exe
-        asset_name: dialogue.exe
-        asset_content_type: application/octet-stream
   mac:
-    needs: setup
     runs-on: macOS-latest
     steps:
       - uses: actions/checkout@v2
@@ -74,13 +41,48 @@ jobs:
       - name: Build
         run: |
           go build -o dialogue-osx
-      - name: Upload Release Asset
-        id: upload-release-asset 
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ env.UPLOAD_PATH }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-          asset_path: ./dialogue-osx
-          asset_name: dialogue-osx
-          asset_content_type: application/octet-stream
+  setup:
+    needs: [win, mac]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Get current date
+      id: date
+      run: echo "MY_DATE=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_ENV
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+      with:
+        tag_name: ${{ env.MY_DATE }}
+        release_name: Release ${{ env.MY_DATE }}
+        body: |
+          Test release
+        draft: false
+        prerelease: false
+    - name: Get artfacts path
+    - uses: actions/download-artifact@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        files: artifact/* 
+    - name: Upload Release Asset
+      id: upload-release-asset 
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+        asset_path: ./dialogue-osx
+        asset_name: dialogue-osx
+        asset_content_type: application/octet-stream
+    - name: Upload Release Asset
+      id: upload-release-asset-2 
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
+        asset_path: ./dialogue.exe
+        asset_name: dialogue.exe
+        asset_content_type: application/octet-stream    
