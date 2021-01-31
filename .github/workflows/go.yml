@@ -26,10 +26,10 @@ jobs:
           mingw-w64-x86_64-toolchain
           mingw-w64-x86_64-go
     - run: |
-        uname -a
         set MSYSTEM=MINGW64
-        uname -a
-        go build -ldflags="-extldflags=-static" -ldflags="-s -w"
+        go build -ldflags="-extldflags=-static"
+        pwd
+        ls -la
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
