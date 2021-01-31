@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  prepare:
+  setup:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -28,8 +28,9 @@ jobs:
         prerelease: false
     - name: Get upload path
       id: upload
-      run: echo "UPLOAD_PATH= ${{ steps.create_release.outputs.upload_url }} >> $GITHUB_ENV  
+      run: echo "UPLOAD_PATH='${{ steps.create_release.outputs.upload_url }}' >> $GITHUB_ENV  
   win:  
+    needs: setup
     runs-on: windows-latest
     defaults:
       run:
@@ -62,6 +63,7 @@ jobs:
         asset_name: dialogue.exe
         asset_content_type: application/octet-stream
   mac:
+    needs: setup
     runs-on: macOS-latest
     steps:
       - uses: actions/checkout@v2
