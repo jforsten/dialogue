@@ -22,18 +22,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+
+	message "logue/logue/sysex/message"
 	sysex "logue/logue/sysex"
 )
 
 // Logue is generic interface for communicating Korg's logue series
 type Logue interface {
 	getDeviceSpecificInfo() DeviceSpecificInfo
-}
-
-// Relation between sent sysex type and expected return type and data
-type SysexMessageMap struct {
-	responseType           byte
-	responseDataHeaderSize int
 }
 
 type DeviceSpecificInfo struct {
@@ -46,7 +42,6 @@ type DeviceSpecificInfo struct {
 	programFilesize          int
 	midiNamePrefix           string
 	programRange             ProgramRange
-	sysexMap                 map[byte]SysexMessageMap
 }
 
 var logue Logue
@@ -99,7 +94,6 @@ func SetMidi(inIdx int, outIdx int) error {
 	return setMidi(inIdx, outIdx)
 }
 
-
 func createSysex(messageType byte, header []byte, data []byte) []byte {
 	var buf []byte
 	buf = append(header, convertBinaryDataToSysexData(data)...)
@@ -112,10 +106,11 @@ func createSysex(messageType byte, header []byte, data []byte) []byte {
 }
 
 type response struct {
-	err  error
-	data []byte
+	err      error
+	familyID byte
+	msgType  byte
+	data     []byte
 }
-
 
 func getData(requestType byte, requestDataHeader []byte, requestData []byte) <-chan response {
 
@@ -127,7 +122,7 @@ func getData(requestType byte, requestDataHeader []byte, requestData []byte) <-c
 	sysexMessage = createSysex(requestType, requestDataHeader, requestData)
 
 	if isDebug {
-		fmt.Printf("\nSEND:\n%s\n", hex.Dump(sysexMessage))
+		fmt.Printf("\nDEBUG: Sent SysEx:\n%s\n", hex.Dump(sysexMessage))
 	}
 
 	replyChan := sendSysexAsync(sysexMessage)
@@ -135,31 +130,31 @@ func getData(requestType byte, requestDataHeader []byte, requestData []byte) <-c
 
 	if reply == nil {
 		err = fmt.Errorf("ERROR: Communication not working!")
-		ch <- response{err, nil}
+		ch <- response{err, 0, 0, nil}
 		return ch
 	}
 
 	if isDebug {
-		fmt.Printf("\nRECEIVED:\n%s\n", hex.Dump(reply))
+		fmt.Printf("\nDEBUG: Received SyEx:\n%s\n", hex.Dump(reply))
 	}
 
 	_, _, responseData := sysex.Response(reply)
 
 	if len(responseData) > 10 {
-
-		responseDataHeaderSize := logue.getDeviceSpecificInfo().sysexMap[requestType].responseDataHeaderSize
+		fmt.Println(message.ResponseInfo[requestType])
+		responseDataHeaderSize := message.ResponseInfo[requestType].HeaderSize
 		dataSection := responseData[responseDataHeaderSize:]
 		binData = convertSysexDataToBinaryData(dataSection)
-		
+
 		if binData == nil {
 			err = fmt.Errorf("ERROR: Received wrong data!")
-			ch <- response{err, nil}
+			ch <- response{err, reply[5], reply[6], nil}
 			return ch
 		}
 
 	}
 
-	ch <- response{err, binData}
+	ch <- response{err, reply[5], reply[6], binData}
 	return ch
 }
 

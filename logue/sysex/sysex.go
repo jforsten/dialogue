@@ -30,7 +30,15 @@ const KorgID byte = 0x42
 func Request(familyID byte, deviceID byte, messageType byte, data []byte) []byte {
 	// deviceID = global MIDI channel -> '1'-based to '0'-based
 	channel := 0x30 + deviceID - 1
-	message := []byte{Start, KorgID, channel, 0x00, 0x01, familyID, messageType}
+	message := []byte{
+		Start, 
+		KorgID, 
+		channel, 
+		0x00, 
+		0x01, // FamilyID MSB = 0x01
+		familyID, 
+		messageType,
+	}
 	message = append(message, data...)
 	message = append(message, End)
 

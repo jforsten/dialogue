@@ -23,7 +23,7 @@ import (
 	"fmt"
 
 	sysex "logue/logue/sysex"
-	sysexMessageType "logue/logue/sysex/messagetype"
+	sysexMessageType "logue/logue/sysex/message"
 )
 
 func SetUserSlotData(moduleTypeSlot string, filename string) <-chan error {

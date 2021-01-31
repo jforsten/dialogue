@@ -17,26 +17,9 @@
 
 package logue
 
-import (
-	. "logue/logue/sysex/messagetype"
-)
-
 // Prologue specific Logue interface implementation
 type Prologue struct {
 	DeviceID byte
-}
-
-var a = map[byte]byte {}
-
-var prologueSysexMap = map[byte]SysexMessageMap {
-	GlobalDataDumpRequest : {CurrentProgramDataDump,0},
-	CurrentProgramDataDumpRequest : {CurrentProgramDataDump, 0},
-	ProgramDataDumpRequest : {ProgramDataDump, 2},
-	UserSlotDataRequest : {UserSlotData, 3},
-	UserSlotData : {UserSlotDataRequest, 0},
-	UserSlotStatusRequest : {UserSlotStatus, 3},
-	UserModuleInfoRequest : {UserModuleInfo, 2},		
-	ClearUserSlot : {DataLoadCompleted, 0},
 }
 
 func (p Prologue) getDeviceSpecificInfo() DeviceSpecificInfo {
@@ -49,8 +32,7 @@ func (p Prologue) getDeviceSpecificInfo() DeviceSpecificInfo {
 		programDataFileExtension: ".prog_bin",
 		programFilesize:          336,
 		midiNamePrefix:           "prologue",
-		programRange:             ProgramRange{1, 500},
-		sysexMap: 				  prologueSysexMap,		
+		programRange:             ProgramRange{1, 500},	
 	}
 }
 

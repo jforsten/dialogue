@@ -39,9 +39,9 @@ func main() {
 		explicitMidiOutIdx = flag.Int("out", -1, "Set Midi output (index) explicitely. -1 = Auto detect.")
 		enablePortListing  = flag.Bool("l", false, "Show available MIDI ports.")
 		patchNumber        = flag.Int("p", -1, "Program number. -1 = Edit buffer.")
-		mode               = flag.String("m", "pw", "Operation mode")
-		moduleTypeSlot     = flag.String("s", "osc/0", "Module type & slot")
-		debug              = flag.Bool("d", false, "Enable extra debug info")
+		mode               = flag.String("m", "pw", "Operation mode: pw, pr, uw, ur, ui, ud.")
+		moduleTypeSlot     = flag.String("s", "osc/0", "Module type & slot.")
+		debug              = flag.Bool("d", false, "Enable extra debug prints.")
 	)
 	flag.Parse()
 
@@ -88,7 +88,9 @@ func main() {
 		os.Exit(-1)
 	}
 
-	//fmt.Printf("Using MIDI (in:%d / out:%d) - channel <%d>\n", in, out, deviceID)
+	if *debug {
+		fmt.Printf("\nDEBUG: Using MIDI (in:%d / out:%d) - channel <%d>\n", in, out, *deviceID)
+	}
 
 	err = logue.SetMidi(in, out)
 	checkError(err)

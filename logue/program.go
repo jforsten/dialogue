@@ -23,7 +23,7 @@ import (
 	"time"
 
 	sysex "logue/logue/sysex"
-	sysexMessageType "logue/logue/sysex/messagetype"
+	sysexMessageType "logue/logue/sysex/message"
 )
 
 type ProgramRange struct {
