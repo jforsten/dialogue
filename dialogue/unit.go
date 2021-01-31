@@ -15,15 +15,15 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-package logue
+package dialogue
 
 import (
 	//"encoding/hex"
 
 	"fmt"
 
-	sysex "logue/logue/sysex"
-	sysexMessageType "logue/logue/sysex/message"
+	sysex "dialogue/dialogue/sysex"
+	sysexMessageType "dialogue/dialogue/sysex/message"
 )
 
 func SetUserSlotData(moduleTypeSlot string, filename string) <-chan error {

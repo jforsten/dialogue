@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-package logue
+package dialogue
 
 import (
 	"archive/zip"
@@ -28,7 +28,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
-	sysex "logue/logue/sysex"
+	sysex "dialogue/dialogue/sysex"
 )
 
 func checkError(err error) {

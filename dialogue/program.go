@@ -16,14 +16,14 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-package logue
+package dialogue
 
 import (
 	"fmt"
 	"time"
 
-	sysex "logue/logue/sysex"
-	sysexMessageType "logue/logue/sysex/message"
+	sysex "dialogue/dialogue/sysex"
+	sysexMessageType "dialogue/dialogue/sysex/message"
 )
 
 type ProgramRange struct {
@@ -32,12 +32,12 @@ type ProgramRange struct {
 }
 
 func (p ProgramRange) has(programNumber int) bool {
-	return programNumber >= logue.getDeviceSpecificInfo().programRange.min && programNumber <= logue.getDeviceSpecificInfo().programRange.max
+	return programNumber >= dlg.getDeviceSpecificInfo().programRange.min && programNumber <= dlg.getDeviceSpecificInfo().programRange.max
 }
 
 // Prologue way of selecting program..
 func SelectProgram(number int) error {
-	if number < logue.getDeviceSpecificInfo().programRange.min || number > logue.getDeviceSpecificInfo().programRange.max {
+	if number < dlg.getDeviceSpecificInfo().programRange.min || number > dlg.getDeviceSpecificInfo().programRange.max {
 		return fmt.Errorf("ERROR: Program number out of range!")
 	}
 	number--
@@ -45,15 +45,15 @@ func SelectProgram(number int) error {
 	bankLsb := byte(number / 100)
 	num := byte(number % 100)
 
-	sendNoteOn(logue.getDeviceSpecificInfo().deviceID-1, 1, 1)
+	sendNoteOn(dlg.getDeviceSpecificInfo().deviceID-1, 1, 1)
 	//time.Sleep(2 * time.Millisecond)
-	sendNoteOff(logue.getDeviceSpecificInfo().deviceID-1, 1)
-	sendControlChange(logue.getDeviceSpecificInfo().deviceID-1, 0x78, 0)
+	sendNoteOff(dlg.getDeviceSpecificInfo().deviceID-1, 1)
+	sendControlChange(dlg.getDeviceSpecificInfo().deviceID-1, 0x78, 0)
 	time.Sleep(1 * time.Millisecond)
 
-	sendControlChange(logue.getDeviceSpecificInfo().deviceID-1, 0x00, bankMsb)
-	sendControlChange(logue.getDeviceSpecificInfo().deviceID-1, 0x20, bankLsb)
-	sendProgramChange(logue.getDeviceSpecificInfo().deviceID-1, num)
+	sendControlChange(dlg.getDeviceSpecificInfo().deviceID-1, 0x00, bankMsb)
+	sendControlChange(dlg.getDeviceSpecificInfo().deviceID-1, 0x20, bankLsb)
+	sendProgramChange(dlg.getDeviceSpecificInfo().deviceID-1, num)
 	time.Sleep(1 * time.Millisecond)
 	return nil
 }
@@ -62,9 +62,9 @@ func SetProgram(programNumber int, filename string) <-chan error {
 	var msgType byte
 	var header []byte
 
-	data := getDataFromZipFile(logue.getDeviceSpecificInfo().programDataFileExtension, filename)
+	data := getDataFromZipFile(dlg.getDeviceSpecificInfo().programDataFileExtension, filename)
 
-	if logue.getDeviceSpecificInfo().programRange.has(programNumber) {
+	if dlg.getDeviceSpecificInfo().programRange.has(programNumber) {
 		msgType = sysexMessageType.ProgramDataDump
 		header = sysex.ProgramNumber(programNumber)
 	} else {
@@ -83,7 +83,7 @@ func GetProgram(programNumber int, filename string) <-chan error {
 	var msgType byte
 	var header []byte
 
-	if logue.getDeviceSpecificInfo().programRange.has(programNumber) {
+	if dlg.getDeviceSpecificInfo().programRange.has(programNumber) {
 		msgType = sysexMessageType.ProgramDataDumpRequest
 		header = sysex.ProgramNumber(programNumber)
 	} else {
@@ -107,10 +107,10 @@ func GetProgram(programNumber int, filename string) <-chan error {
 }
 
 func saveProgramDataToFile(data []byte, filename string) error {
-	deviceName := logue.getDeviceSpecificInfo().deviceName
+	deviceName := dlg.getDeviceSpecificInfo().deviceName
 	fileInfoXML := createFileInformationXML(deviceName)
 
-	programInfoXML := createProgramInfoXML(logue.getDeviceSpecificInfo().programInfoName, "", "")
+	programInfoXML := createProgramInfoXML(dlg.getDeviceSpecificInfo().programInfoName, "", "")
 
 	files := map[string][]byte{
 		"FileInformation.xml": []byte(fileInfoXML),

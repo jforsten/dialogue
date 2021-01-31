@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-package logue
+package dialogue
 
 import (
 	//"encoding/hex"
@@ -23,12 +23,12 @@ import (
 	"fmt"
 	"strings"
 
-	message "logue/logue/sysex/message"
-	sysex "logue/logue/sysex"
+	message "dialogue/dialogue/sysex/message"
+	sysex "dialogue/dialogue/sysex"
 )
 
 // Logue is generic interface for communicating Korg's logue series
-type Logue interface {
+type Dialogue interface {
 	getDeviceSpecificInfo() DeviceSpecificInfo
 }
 
@@ -44,7 +44,7 @@ type DeviceSpecificInfo struct {
 	programRange             ProgramRange
 }
 
-var logue Logue
+var dlg Dialogue
 
 var isDebug bool
 
@@ -54,8 +54,8 @@ func Open() error {
 	return initializeMidi()
 }
 
-func SetDevice(lg Logue) {
-	logue = lg
+func SetDevice(d Dialogue) {
+	dlg = d
 }
 
 func findMidiPort(ports []string, prefix string, postfix string) int {
@@ -70,8 +70,8 @@ func findMidiPort(ports []string, prefix string, postfix string) int {
 func FindMidiIO() (int, int) {
 	ins, outs := getMidiPortNames()
 
-	return findMidiPort(ins, logue.getDeviceSpecificInfo().midiNamePrefix, "KBD/KNOB"),
-		findMidiPort(outs, logue.getDeviceSpecificInfo().midiNamePrefix, "SOUND")
+	return findMidiPort(ins, dlg.getDeviceSpecificInfo().midiNamePrefix, "KBD/KNOB"),
+		findMidiPort(outs, dlg.getDeviceSpecificInfo().midiNamePrefix, "SOUND")
 }
 
 func ListMidiPorts() {
@@ -98,8 +98,8 @@ func createSysex(messageType byte, header []byte, data []byte) []byte {
 	var buf []byte
 	buf = append(header, convertBinaryDataToSysexData(data)...)
 	return sysex.Request(
-		logue.getDeviceSpecificInfo().familyID,
-		logue.getDeviceSpecificInfo().deviceID,
+		dlg.getDeviceSpecificInfo().familyID,
+		dlg.getDeviceSpecificInfo().deviceID,
 		messageType,
 		buf,
 	)

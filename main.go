@@ -26,7 +26,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"logue/logue"
+	dlg "dialogue/dialogue"
 	"os"
 )
 
@@ -53,23 +53,23 @@ func main() {
 	filename := flag.Arg(0)
 
 	if *debug {
-		logue.EnableDebugging()
+		dlg.EnableDebugging()
 	}
 
-	err := logue.Open()
+	err := dlg.Open()
 	checkError(err)
 
-	defer logue.Close()
+	defer dlg.Close()
 
 	if *enablePortListing {
-		logue.ListMidiPorts()
+		dlg.ListMidiPorts()
 	}
 
-	logue.SetDevice(logue.Prologue{DeviceID: byte(*deviceID)})
+	dlg.SetDevice(dlg.Prologue{DeviceID: byte(*deviceID)})
 
 	var in, out int
 
-	inFound, outFound := logue.FindMidiIO()
+	inFound, outFound := dlg.FindMidiIO()
 
 	if *explicitMidiInIdx >= 0 {
 		in = *explicitMidiInIdx
@@ -83,7 +83,7 @@ func main() {
 	}
 
 	if in < 0 || out < 0 {
-		logue.ListMidiPorts()
+		dlg.ListMidiPorts()
 		fmt.Printf("\nNo supported devices found! Please try to set MIDI in & out ports explicitely.")
 		os.Exit(-1)
 	}
@@ -92,7 +92,7 @@ func main() {
 		fmt.Printf("\nDEBUG: Using MIDI (in:%d / out:%d) - channel <%d>\n", in, out, *deviceID)
 	}
 
-	err = logue.SetMidi(in, out)
+	err = dlg.SetMidi(in, out)
 	checkError(err)
 
 	// Exit if no files to process...
@@ -100,7 +100,7 @@ func main() {
 		// Select program if opted even no files to process
 		if *patchNumber > 0 {
 			fmt.Printf("Selecting program <%d>\n", *patchNumber)
-			logue.SelectProgram(*patchNumber)
+			dlg.SelectProgram(*patchNumber)
 		}
 		os.Exit(0)
 	}
@@ -109,36 +109,36 @@ func main() {
 	switch *mode {
 
 	case "pr":
-		err = <-logue.GetProgram(*patchNumber, filename)
+		err = <-dlg.GetProgram(*patchNumber, filename)
 		checkError(err)
 		if err == nil {
 			fmt.Printf("\nProgram file '%s' saved to file!\n", filename)
 		}
 
 	case "pw":
-		err = <-logue.SetProgram(*patchNumber, filename)
+		err = <-dlg.SetProgram(*patchNumber, filename)
 		checkError(err)
 		if err == nil {
 			fmt.Printf("\nProgram file '%s' sent to device!\n", filename)
 		}
 
 	case "ur":
-		err = <-logue.GetUserSlotData(*moduleTypeSlot, filename)
+		err = <-dlg.GetUserSlotData(*moduleTypeSlot, filename)
 		checkError(err)
 		fmt.Printf("\nUser data read - %s!\n", *moduleTypeSlot)
 
 	case "uw":
-		err = <-logue.SetUserSlotData(*moduleTypeSlot, filename)
+		err = <-dlg.SetUserSlotData(*moduleTypeSlot, filename)
 		checkError(err)
 		fmt.Printf("\nUser data sent to device!\n")
 
 	case "ud":
-		err = <-logue.DeleteUserData(*moduleTypeSlot)
+		err = <-dlg.DeleteUserData(*moduleTypeSlot)
 		checkError(err)
 		fmt.Printf("\nUser data '%s' deleted!\n", *moduleTypeSlot)
 
 	case "ui":
-		err = <-logue.GetUserDataInfo(*moduleTypeSlot)
+		err = <-dlg.GetUserDataInfo(*moduleTypeSlot)
 		checkError(err)
 	}
 }

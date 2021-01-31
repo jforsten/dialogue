@@ -1,4 +1,4 @@
-module logue
+module dialogue
 
 go 1.15
 

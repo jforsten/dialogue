@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-package logue
+package dialogue
 
 import (
 	"fmt"
@@ -26,7 +26,6 @@ import (
 	"gitlab.com/gomidi/midi/reader"
 	"gitlab.com/gomidi/midi/writer"
 	driver "gitlab.com/gomidi/rtmididrv"
-	//driver "github.com/jforsten/rtmididrv"
 )
 
 type midiConnection struct {
