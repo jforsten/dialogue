@@ -28,7 +28,7 @@ jobs:
         prerelease: false
     - name: Get upload path
       id: upload
-      run: echo "UPLOAD_PATH='${{ steps.create_release.outputs.upload_url }}' >> $GITHUB_ENV  
+      run: echo "UPLOAD_PATH='${{ steps.create_release.outputs.upload_url }}'" >> $GITHUB_ENV  
   win:  
     needs: setup
     runs-on: windows-latest
