@@ -29,7 +29,7 @@ Disclaimer: This is as much a Go Lang learning project as it is a proper tool fo
 * <i>To receive <b>program from position 100</b>:</i><br>
 <code> dialogue -m pr -p 100 NewPatch.prlgprog </code>
 
-* <i>To get <b>user module info</b> of type ModultaionFX:</i><br>
+* <i>To get <b>user module info</b> of type ModulationFX:</i><br>
 <code> dialogue -m ui -s modfx </code>
 
 * <i>To get <b>user module info</b> of DelayFX <b>from slot</b> 2:</i><br>
