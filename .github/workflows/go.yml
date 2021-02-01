@@ -72,7 +72,7 @@ jobs:
           Latest release
         draft: false
         prerelease: false
-
+    - uses: actions/download-artifact@v2
     - name: Upload Release Asset win
       id: upload-release-asset-win
       uses: actions/upload-release-asset@v1
