@@ -25,14 +25,15 @@ jobs:
           mingw-w64-i686-toolchain
           mingw-w64-x86_64-toolchain
           mingw-w64-x86_64-go
+          zip
     - run: |
         set MSYSTEM=MINGW64
-        go build -ldflags="-extldflags=-static" -o dialogue-win.exe
-        pwd
+        go build -ldflags="-extldflags=-static"
+        zip ./dialogue-win.zip ./dialogue.exe
         ls -la
     - uses: actions/upload-artifact@v2
       with:
-        path: ./dialogue-win.exe
+        path: ./dialogue-win.zip
         name: dialogue-win  
   
   mac:
@@ -45,11 +46,12 @@ jobs:
           go-version: '1.15.6'
       - name: Build
         run: |
-          go build -o dialogue-osx
+          go build
+          zip ./dialogue-osx.zip ./dialogue
       - uses: actions/upload-artifact@v2
         with:
-          path: ./dialogue-osx
-          name: dialogue-osx  
+          path: ./dialogue-osx.zip
+          name: dialogue-osx
   
   release:
     runs-on: ubuntu-latest
@@ -80,8 +82,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: /home/runner/work/dialogue/dialogue/dialogue-win/dialogue-win.exe
-        asset_name: dialogue-win.exe
+        asset_path: /home/runner/work/dialogue/dialogue/dialogue-win/dialogue-win
+        asset_name: dialogue-win.zip
         asset_content_type: application/octet-stream
 
     - name: Upload Release Asset osx
@@ -92,5 +94,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
         asset_path: /home/runner/work/dialogue/dialogue/dialogue-osx/dialogue-osx
-        asset_name: dialogue-osx
+        asset_name: dialogue-osx.zip
         asset_content_type: application/octet-stream

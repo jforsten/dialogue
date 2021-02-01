@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"strings"
 
-	message "dialogue/dialogue/sysex/message"
-	sysex "dialogue/dialogue/sysex"
+	message "dialogue/internal/pkg/dialogue/sysex/message"
+	sysex "dialogue/internal/pkg/dialogue/sysex"
 )
 
 // Logue is generic interface for communicating Korg's logue series
