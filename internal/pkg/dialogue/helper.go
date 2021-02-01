@@ -28,7 +28,7 @@ import (
 	"io"
 	"io/ioutil"
 	"path/filepath"
-	sysex "dialogue/dialogue/sysex"
+	sysex "dialogue/internal/pkg/dialogue/sysex"
 )
 
 func checkError(err error) {

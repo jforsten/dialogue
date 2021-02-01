@@ -22,8 +22,8 @@ import (
 
 	"fmt"
 
-	sysex "dialogue/dialogue/sysex"
-	sysexMessageType "dialogue/dialogue/sysex/message"
+	sysex "dialogue/internal/pkg/dialogue/sysex"
+	sysexMessageType "dialogue/internal/pkg/dialogue/sysex/message"
 )
 
 func SetUserSlotData(moduleTypeSlot string, filename string) <-chan error {

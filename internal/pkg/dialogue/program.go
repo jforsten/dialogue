@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"time"
 
-	sysex "dialogue/dialogue/sysex"
-	sysexMessageType "dialogue/dialogue/sysex/message"
+	sysex "dialogue/internal/pkg/dialogue/sysex"
+	sysexMessageType "dialogue/internal/pkg/dialogue/sysex/message"
 )
 
 type ProgramRange struct {

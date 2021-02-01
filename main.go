@@ -26,7 +26,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	dlg "dialogue/dialogue"
+	dlg "dialogue/internal/pkg/dialogue"
 	"os"
 )
 
