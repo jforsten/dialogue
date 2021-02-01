@@ -1,6 +1,6 @@
 # Dialogue
 
-## Ultimate command-line tool for Korg Logue series synthesizer. 
+## Ultimate command-line tool for Korg Logue series synthesizers. 
 
 ---
 
