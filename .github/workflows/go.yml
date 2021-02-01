@@ -80,7 +80,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: ./dialogue-win.exe
+        asset_path: /home/runner/work/dialogue/dialogue/dialogue-win/dialogue-win.exe
         asset_name: dialogue-win
         asset_content_type: application/octet-stream
 
@@ -91,6 +91,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: ./dialogue-osx
+        asset_path: /home/runner/work/dialogue/dialogue/dialogue-osx/dialogue-osx
         asset_name: dialogue-osx
         asset_content_type: application/octet-stream
